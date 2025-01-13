@@ -3,98 +3,136 @@
 <head>
     <title>PMS Backend Support</title>
     <style>
+        :root {
+            --primary-color: #2196F3;
+            --secondary-color: #4CAF50;
+            --danger-color: #f44336;
+            --warning-color: #ff9800;
+            --text-color: #333;
+            --bg-color: #f5f5f5;
+            --card-bg: #ffffff;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f5f5f5;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 40px);
+            height: 100vh;
+            color: var(--text-color);
         }
+
         .header {
-            text-align: center;
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin-bottom: 20px;
         }
+
+        .header h1 {
+            margin: 0;
+            color: var(--primary-color);
+            font-size: 24px;
+        }
+
         .description {
-            text-align: center;
             color: #666;
-            margin-bottom: 20px;
+            margin-top: 10px;
+            font-size: 14px;
         }
+
+        .main-content {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+        }
+
+        .log-section {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
         .log-container {
-            background-color: #000;
+            background-color: #1e1e1e;
             color: #00ff00;
-            padding: 10px;
+            padding: 15px;
+            border-radius: 10px;
+            font-family: 'Consolas', monospace;
             flex: 1;
             overflow-y: auto;
-            font-family: monospace;
-            margin-bottom: 20px;
-            border-radius: 5px;
+            font-size: 13px;
+            line-height: 1.5;
         }
+
         .button-container {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: 1fr;
             gap: 10px;
-            padding: 20px 0;
-            background-color: #f5f5f5;
         }
+
         .button {
-            padding: 10px 20px;
+            padding: 12px 20px;
             font-size: 14px;
             cursor: pointer;
             border: none;
             border-radius: 5px;
-            background-color: #4CAF50;
             color: white;
-            transition: background-color 0.3s;
-            width: 100%;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
-        .button:hover {
-            background-color: #45a049;
+
+        .button i {
+            font-size: 16px;
         }
+
+        .button.primary { background-color: var(--primary-color); }
+        .button.primary:hover { background-color: #1976D2; }
+        
+        .button.success { background-color: var(--secondary-color); }
+        .button.success:hover { background-color: #388E3C; }
+        
+        .button.danger { background-color: var(--danger-color); }
+        .button.danger:hover { background-color: #D32F2F; }
+        
+        .button.warning { background-color: var(--warning-color); }
+        .button.warning:hover { background-color: #F57C00; }
+
         .button:disabled {
             background-color: #cccccc;
             cursor: not-allowed;
         }
-        .button.stop {
-            background-color: #f44336;
-        }
-        .button.stop:hover {
-            background-color: #da190b;
-        }
-        .button.restart {
-            background-color: #2196F3;
-        }
-        .button.restart:hover {
-            background-color: #0b7dda;
-        }
-        .button.update {
-            background-color: #ff9800;
-        }
-        .button.update:hover {
-            background-color: #e68a00;
-        }
+
         .status {
-            text-align: center;
-            margin: 10px 0;
-            font-weight: bold;
-            padding: 10px;
-            background-color: #fff;
+            padding: 15px;
             border-radius: 5px;
+            font-weight: 500;
+            text-align: center;
+            background-color: var(--card-bg);
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        .update-notification {
-            background-color: #fff3cd;
-            color: #856404;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
-            display: none;
-        }
-        .update-notification .download-link {
-            color: #0066cc;
-            text-decoration: underline;
-            cursor: pointer;
-        }
+
+        /* Modal Styles */
         .modal {
             display: none;
             position: fixed;
@@ -108,95 +146,30 @@
 
         .modal-content {
             position: relative;
-            background-color: #fefefe;
-            margin: 15% auto;
+            background-color: var(--card-bg);
+            margin: 5% auto;
             padding: 20px;
             width: 70%;
             max-width: 700px;
-            border-radius: 5px;
-            max-height: 70vh;
-            overflow-y: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .modal-header {
             margin-bottom: 20px;
             padding-bottom: 10px;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #eee;
         }
 
         .modal-title {
             margin: 0;
-            color: #333;
-        }
-
-        .modal-version {
-            color: #666;
-            font-size: 0.9em;
-            margin-top: 5px;
-        }
-
-        .modal-date {
-            color: #888;
-            font-size: 0.8em;
+            color: var(--primary-color);
+            font-size: 20px;
         }
 
         .modal-body {
             margin-bottom: 20px;
-            white-space: pre-line;
-            font-size: 14px;
             line-height: 1.6;
-        }
-
-        .modal-body h2 {
-            color: #2196F3;
-            margin-top: 20px;
-            margin-bottom: 10px;
-            font-size: 1.4em;
-        }
-
-        .modal-body h3 {
-            color: #666;
-            margin-top: 15px;
-            margin-bottom: 8px;
-            font-size: 1.2em;
-        }
-
-        .modal-body ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-
-        .modal-body li {
-            margin-bottom: 5px;
-        }
-
-        .changelog-section {
-            margin-bottom: 15px;
-        }
-
-        .modal-footer {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            padding-top: 15px;
-            border-top: 1px solid #ddd;
-        }
-
-        .modal-button {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .modal-button.primary {
-            background-color: #4CAF50;
-            color: white;
-        }
-
-        .modal-button.secondary {
-            background-color: #ccc;
-            color: black;
         }
 
         .close {
@@ -208,91 +181,187 @@
             color: #666;
         }
 
-        .update-badge {
-            display: inline-block;
-            background-color: #ff9800;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 0.8em;
-            margin-left: 5px;
+        .close:hover {
+            color: var(--danger-color);
         }
 
-        .critical-update {
-            background-color: #f44336;
-            color: white;
-            padding: 20px;
-            margin: 10px 0;
-            border-radius: 5px;
+        /* Developer Card Styles */
+        .developer-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .developer-card {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
             text-align: center;
         }
-        .critical-reason {
-            font-size: 0.9em;
-            margin-top: 10px;
-            font-style: italic;
+
+        .developer-card img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin-bottom: 10px;
         }
-        .postpone-count {
-            font-size: 0.8em;
+
+        .developer-card h3 {
+            margin: 0;
+            color: var(--primary-color);
+            font-size: 16px;
+        }
+
+        .developer-card p {
+            margin: 5px 0;
             color: #666;
-            margin-top: 5px;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Welcome to PMS Backend Support</h1>
+        <h1>J5 Pharmacy Management System - Backend Support</h1>
+        <div class="description">
+            Control panel for managing the J5 Pharmacy Management System backend server and system monitoring.
+        </div>
     </div>
-    <div class="description">
-        This control panel manages the J5 Pharmacy Management System backend server and provides system monitoring capabilities.
+
+    <div class="main-content">
+        <div class="log-section">
+            <div class="log-container" id="logContainer"></div>
+        </div>
+
+        <div class="control-section">
+            <div class="status card" id="status"></div>
+            <div class="button-container card">
+                <button id="startBtn" class="button success">
+                    <i>▶</i> Start Server
+                </button>
+                <button id="stopBtn" class="button danger" disabled>
+                    <i>⬛</i> Stop Server
+                </button>
+                <button id="restartBtn" class="button warning" disabled>
+                    <i>🔄</i> Restart Server
+                </button>
+                <button id="updateBtn" class="button primary">
+                    <i>⭮</i> Check for Updates
+                </button>
+                <button id="openBrowserBtn" class="button primary" disabled>
+                    <i>🌐</i> Open Browser
+                </button>
+            </div>
+        </div>
     </div>
-    
-    <!-- Update Modal -->
-    <div id="updateModal" class="modal">
+
+    <!-- Instructions Modal -->
+    <div id="instructionsModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
             <div class="modal-header">
-                <h2 class="modal-title">Update Available</h2>
-                <div class="modal-version">New Version: <span id="modalVersion"></span></div>
-                <div class="modal-date">Released: <span id="modalDate"></span></div>
+                <h2 class="modal-title">Instructions</h2>
             </div>
-            <div class="modal-body" id="modalChangelog"></div>
-            <div class="modal-footer">
-                <button class="modal-button secondary" id="modalClose">Later</button>
-                <button class="modal-button primary" id="modalUpdate">Update Now</button>
+            <div class="modal-body">
+                <h3>Getting Started</h3>
+                <ol>
+                    <li>Click "Start Server" to initialize the backend server</li>
+                    <li>Wait for the server status to show "Server is running"</li>
+                    <li>Click "Open Browser" to access the PMS web interface</li>
+                </ol>
+
+                <h3>Server Controls</h3>
+                <ul>
+                    <li><strong>Start Server:</strong> Initializes the backend server</li>
+                    <li><strong>Stop Server:</strong> Shuts down the server safely</li>
+                    <li><strong>Restart Server:</strong> Stops and restarts the server</li>
+                    <li><strong>Check for Updates:</strong> Checks for system updates</li>
+                </ul>
+
+                <h3>Troubleshooting</h3>
+                <ul>
+                    <li>Check the log window for error messages</li>
+                    <li>Ensure all required services are running</li>
+                    <li>Verify network connectivity</li>
+                </ul>
             </div>
         </div>
     </div>
 
-    <!-- Critical Update Modal -->
-    <div id="criticalUpdateModal" class="modal">
+    <!-- About Modal -->
+    <div id="aboutModal" class="modal">
         <div class="modal-content">
+            <span class="close">&times;</span>
             <div class="modal-header">
-                <h2 class="modal-title">Critical Update Required</h2>
-                <div class="modal-version">New Version: <span id="criticalModalVersion"></span></div>
-                <div class="modal-date">Released: <span id="criticalModalDate"></span></div>
+                <h2 class="modal-title">About PMS Backend Support</h2>
             </div>
-            <div class="critical-update">
-                This update is required to ensure system stability and security.
-                <div id="criticalReason" class="critical-reason"></div>
-            </div>
-            <div class="modal-body" id="criticalModalChangelog"></div>
-            <div class="modal-footer">
-                <button class="modal-button primary" id="criticalModalUpdate">Update Now</button>
+            <div class="modal-body">
+                <p>The Backend Support application manages and monitors the core server functionality of the J5 Pharmacy Management System.</p>
+                
+                <h3>Backend Capabilities</h3>
+                <ul>
+                    <li><strong>Server Management:</strong> Start, stop, and monitor the backend server</li>
+                    <li><strong>Database Operations:</strong> Handles MySQL database connections and queries</li>
+                    <li><strong>API Services:</strong> RESTful API endpoints for frontend communication</li>
+                    <li><strong>Real-time Updates:</strong> WebSocket integration for live data synchronization</li>
+                    <li><strong>Security:</strong> JWT authentication and request validation</li>
+                    <li><strong>Error Logging:</strong> Comprehensive error tracking and logging system</li>
+                </ul>
+
+                <h3>System Requirements</h3>
+                <ul>
+                    <li>Node.js Runtime Environment</li>
+                    <li>MySQL Database Server</li>
+                    <li>Minimum 4GB RAM</li>
+                    <li>Windows 8 or higher</li>
+                </ul>
+
+                <h3>Version Information</h3>
+                <p>Version: 1.0.0</p>
+                <p>© 2024 J5 Pharmacy. All rights reserved.</p>
+                
+                <h3>Support</h3>
+                <p>For technical support and inquiries, please contact the development team through the Developers section.</p>
             </div>
         </div>
     </div>
 
-    <div class="update-notification" id="updateNotification">
-        An update is available! <span class="download-link" id="downloadLink">Click here to view changes</span>
-    </div>
-    <div class="log-container" id="logContainer"></div>
-    <div id="status" class="status"></div>
-    <div class="button-container">
-        <button id="startBtn" class="button">Start Server</button>
-        <button id="stopBtn" class="button stop" disabled>Stop Server</button>
-        <button id="restartBtn" class="button restart" disabled>Restart Server</button>
-        <button id="updateBtn" class="button update">Update Client</button>
-        <button id="openBrowserBtn" class="button" disabled>Open Browser</button>
+    <!-- Developers Modal -->
+    <div id="developersModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="modal-header">
+                <h2 class="modal-title">Zen Garden Team</h2>
+            </div>
+            <div class="modal-body">
+                <div class="developer-cards">
+                    <div class="developer-card">
+                        <h3>Project Manager</h3>
+                        <p>Kevin Llanes</p>
+                        <p>kevsllanes@gmail.com</p>
+                    </div>
+                    <div class="developer-card">
+                        <h3>System Analyst</h3>
+                        <p>Bea Alyssa Lugtu</p>
+                        <p>lugtubealyssa@gmail.com</p>
+                    </div>
+                    <div class="developer-card">
+                        <h3>Backend Developer</h3>
+                        <p>Karl Mathew Miranda</p>
+                        <p>@gmail.com</p>
+                    </div>
+                    <div class="developer-card">
+                        <h3>Backend Developer</h3>
+                        <p>James Ivan Camique</p>
+                        <p>@gmail.com</p>
+                    </div>
+                    <div class="developer-card">
+                        <h3>Business Analyst</h3>
+                        <p>@gmail.com</p>
+                        <p></p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -476,6 +545,40 @@
                 ipcRenderer.send('update:completed');
             }
         };
+
+        // Modal handling
+        const modals = {
+            instructions: document.getElementById('instructionsModal'),
+            about: document.getElementById('aboutModal'),
+            developers: document.getElementById('developersModal')
+        };
+
+        // Close button handling for all modals
+        document.querySelectorAll('.close').forEach(closeBtn => {
+            closeBtn.onclick = function() {
+                this.closest('.modal').style.display = 'none';
+            }
+        });
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        }
+
+        // IPC handlers for showing modals
+        ipcRenderer.on('show:instructions', () => {
+            modals.instructions.style.display = 'block';
+        });
+
+        ipcRenderer.on('show:about', () => {
+            modals.about.style.display = 'block';
+        });
+
+        ipcRenderer.on('show:developers', () => {
+            modals.developers.style.display = 'block';
+        });
     </script>
 </body>
 </html> 

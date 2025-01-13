@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -132,18 +132,75 @@ function checkForUpdates() {
   });
 }
 
+function createMenu() {
+  const template = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Exit',
+          click: () => {
+            app.quit();
+          }
+        }
+      ]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Instructions',
+          click: () => {
+            if (controlPanel) {
+              controlPanel.webContents.send('show:instructions');
+            }
+          }
+        },
+        {
+          type: 'separator'
+        },
+        {
+          label: 'About',
+          click: () => {
+            if (controlPanel) {
+              controlPanel.webContents.send('show:about');
+            }
+          }
+        },
+        {
+          label: 'Developers',
+          click: () => {
+            if (controlPanel) {
+              controlPanel.webContents.send('show:developers');
+            }
+          }
+        }
+      ]
+    }
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+}
+
 function createControlPanel() {
   controlPanel = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1000,
+    height: 700,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
     },
-    title: 'PMS Backend Support'
+    title: 'PMS Backend Support',
+    icon: path.join(__dirname, 'icons', process.platform === 'win32' 
+      ? 'icon.ico' 
+      : process.platform === 'darwin'
+      ? 'icon.icns'
+      : 'icon.png')
   });
 
   controlPanel.loadFile(path.join(__dirname, 'controlPanel.html'));
+  createMenu();
 
   if (isDev) {
     controlPanel.webContents.openDevTools();
@@ -170,7 +227,12 @@ function createBrowserWindow() {
     webPreferences: {
       nodeIntegration: false
     },
-    show: false
+    show: false,
+    icon: path.join(__dirname, 'icons', process.platform === 'win32' 
+      ? 'icon.ico' 
+      : process.platform === 'darwin'
+      ? 'icon.icns'
+      : 'icon.png')
   });
 
   browserWindow.loadURL('https://pms.j5pharmacy.com');
