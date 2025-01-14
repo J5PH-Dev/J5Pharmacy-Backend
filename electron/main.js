@@ -1027,45 +1027,89 @@ async function downloadUpdate(downloadUrl) {
     let receivedBytes = 0;
     let totalBytes = 0;
 
-    // Use the direct download URL with authentication
-    const request = https.get(downloadUrl, {
+    // Parse URL to get the API URL for the release asset
+    const urlParts = downloadUrl.split('/');
+    const owner = urlParts[3];
+    const repo = urlParts[4];
+    const tag = urlParts[6];
+
+    // First, get the release information to get the asset ID
+    const releaseOptions = {
+      hostname: 'api.github.com',
+      path: `/repos/${owner}/${repo}/releases/tags/${tag}`,
       headers: {
         'User-Agent': 'J5PH-Dev/J5Pharmacy-Backend',
-        'Accept': 'application/octet-stream',
+        'Accept': 'application/vnd.github.v3+json',
         'Authorization': `token ${process.env.GITHUB_TOKEN}`
       }
-    }, (response) => {
-      const statusLog = `[${new Date().toLocaleTimeString()}] Download response status: ${response.statusCode} ${response.statusMessage}`;
-      console.log(statusLog);
-      if (controlPanel) {
-        controlPanel.webContents.send('server:log', statusLog);
-      }
+    };
 
-      if (response.statusCode === 302 || response.statusCode === 301) {
-        const redirectUrl = response.headers.location;
-        const redirectLog = `[${new Date().toLocaleTimeString()}] Redirecting to: ${redirectUrl}`;
-        console.log(redirectLog);
-        if (controlPanel) {
-          controlPanel.webContents.send('server:log', redirectLog);
-        }
-
-        // Follow the redirect with the token
-        const redirectRequest = https.get(redirectUrl, {
-          headers: {
-            'User-Agent': 'J5PH-Dev/J5Pharmacy-Backend',
-            'Accept': 'application/octet-stream',
-            'Authorization': `token ${process.env.GITHUB_TOKEN}`
+    https.get(releaseOptions, (releaseResponse) => {
+      let releaseData = '';
+      releaseResponse.on('data', chunk => { releaseData += chunk; });
+      releaseResponse.on('end', () => {
+        try {
+          const release = JSON.parse(releaseData);
+          const asset = release.assets.find(a => a.name === 'J5PMS-setup.exe');
+          
+          if (!asset) {
+            throw new Error('Installer asset not found in release');
           }
-        }, (redirectResponse) => {
-          handleResponse(redirectResponse);
-        });
-        redirectRequest.on('error', handleError);
-        redirectRequest.end();
-        return;
-      }
 
-      handleResponse(response);
-    });
+          // Now download the asset using the asset URL
+          const request = https.get({
+            hostname: 'api.github.com',
+            path: `/repos/${owner}/${repo}/releases/assets/${asset.id}`,
+            headers: {
+              'User-Agent': 'J5PH-Dev/J5Pharmacy-Backend',
+              'Accept': 'application/octet-stream',
+              'Authorization': `token ${process.env.GITHUB_TOKEN}`
+            }
+          }, (response) => {
+            const statusLog = `[${new Date().toLocaleTimeString()}] Download response status: ${response.statusCode} ${response.statusMessage}`;
+            console.log(statusLog);
+            if (controlPanel) {
+              controlPanel.webContents.send('server:log', statusLog);
+            }
+
+            if (response.statusCode === 302 || response.statusCode === 301) {
+              const redirectUrl = response.headers.location;
+              const redirectLog = `[${new Date().toLocaleTimeString()}] Redirecting to: ${redirectUrl}`;
+              console.log(redirectLog);
+              if (controlPanel) {
+                controlPanel.webContents.send('server:log', redirectLog);
+              }
+
+              // Follow the redirect with the token
+              const redirectRequest = https.get(redirectUrl, {
+                headers: {
+                  'User-Agent': 'J5PH-Dev/J5Pharmacy-Backend',
+                  'Authorization': `token ${process.env.GITHUB_TOKEN}`
+                }
+              }, (redirectResponse) => {
+                handleResponse(redirectResponse);
+              });
+              redirectRequest.on('error', handleError);
+              redirectRequest.end();
+              return;
+            }
+
+            handleResponse(response);
+          });
+
+          request.on('error', handleError);
+          request.end();
+
+        } catch (error) {
+          const errorLog = `[${new Date().toLocaleTimeString()}] Failed to process release data: ${error.message}`;
+          console.error(errorLog);
+          if (controlPanel) {
+            controlPanel.webContents.send('server:log', errorLog);
+          }
+          reject(error);
+        }
+      });
+    }).on('error', handleError);
 
     function handleResponse(response) {
       if (response.statusCode !== 200) {
@@ -1120,9 +1164,6 @@ async function downloadUpdate(downloadUrl) {
       fs.unlink(downloadPath, () => {});
       reject(err);
     };
-
-    request.on('error', handleError);
-    request.end();
   });
 }
 

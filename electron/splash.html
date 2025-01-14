@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Loading...</title>
+    <title>J5 Pharmacy PMS</title>
     <style>
         body {
             margin: 0;
@@ -11,74 +11,67 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background: white;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             font-family: Arial, sans-serif;
+            color: white;
             user-select: none;
         }
-
-        .splash-container {
-            text-align: center;
-            padding: 20px;
-        }
-
         .logo {
-            max-width: 300px;
-            height: auto;
+            width: 150px;
+            height: 150px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .version {
+            font-size: 14px;
+            opacity: 0.8;
             margin-bottom: 20px;
         }
-
-        .loading-bar {
-            width: 300px;
+        .loading {
+            width: 200px;
             height: 4px;
-            background: #f0f0f0;
+            background: rgba(255, 255, 255, 0.2);
             border-radius: 2px;
             overflow: hidden;
-            position: relative;
         }
-
-        .loading-progress {
-            position: absolute;
-            left: 0;
-            top: 0;
+        .loading-bar {
+            width: 0%;
             height: 100%;
-            width: 30%;
-            background: #2196F3;
-            animation: loading 1.5s infinite ease-in-out;
+            background: white;
             border-radius: 2px;
+            animation: loading 2s ease-in-out infinite;
         }
-
-        .loading-text {
-            margin-top: 10px;
-            color: #666;
-            font-size: 14px;
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
-
-        .credit-text {
-            position: absolute;
-            bottom: 20px;
-            color: #666;
-            font-size: 12px;
-            font-style: italic;
-        }
-
         @keyframes loading {
-            0% {
-                left: -30%;
-            }
-            100% {
-                left: 100%;
-            }
+            0% { width: 0%; }
+            50% { width: 100%; }
+            100% { width: 0%; }
         }
     </style>
 </head>
 <body>
-    <div class="splash-container">
-        <img src="icons/logo-banner.png" alt="J5 Pharmacy" class="logo">
-        <div class="loading-bar">
-            <div class="loading-progress"></div>
-        </div>
-        <div class="loading-text">Loading...</div>
+    <img src="icons/icon.ico" alt="Logo" class="logo">
+    <div class="title">J5 Pharmacy Management System</div>
+    <div class="version">Version <span id="version"></span></div>
+    <div class="loading">
+        <div class="loading-bar"></div>
     </div>
-    <div class="credit-text">Made by Zen Garden</div>
+    <p><strong>&copy; 2025 Zen Garden</strong></p>
+    <script>
+        // Get version from electron
+        const { remote } = require('electron');
+        const app = remote ? remote.app : require('@electron/remote').app;
+        document.getElementById('version').textContent = app.getVersion();
+    </script>
 </body>
 </html> 
