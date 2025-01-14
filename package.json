@@ -1,6 +1,6 @@
 {
   "name": "j5pharmacy-backend",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Backend for J5 Pharmacy Management System",
   "author": "Zen Garden",
   "main": "./electron/main.js",
@@ -65,8 +65,7 @@
       "menuCategory": "J5 Pharmacy",
       "perMachine": true,
       "deleteAppDataOnUninstall": true,
-      "guid": "j5pharmacy-pms",
-      "include": "./electron/installer.nsh"
+      "guid": "j5pharmacy-pms"
     },
     "asar": false
   },

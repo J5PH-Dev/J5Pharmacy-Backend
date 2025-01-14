@@ -226,6 +226,8 @@ function createMenu() {
 }
 
 function createSplashScreen() {
+  const iconPath = path.join(__dirname, 'icons', 'icon.ico');
+  
   splashScreen = new BrowserWindow({
     width: 500,
     height: 300,
@@ -236,8 +238,19 @@ function createSplashScreen() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
-    }
+    },
+    icon: iconPath
   });
+
+  // Set the app icon for the taskbar/dock
+  if (process.platform === 'win32') {
+    splashScreen.setIcon(iconPath);
+    // Force a refresh of the taskbar icon
+    splashScreen.setSkipTaskbar(true);
+    setTimeout(() => {
+      splashScreen.setSkipTaskbar(false);
+    }, 100);
+  }
 
   splashScreen.loadFile(path.join(__dirname, 'splash.html'));
   splashScreen.center();
