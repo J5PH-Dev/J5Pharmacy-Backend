@@ -100,11 +100,15 @@ function checkForUpdates() {
       }
     };
 
+    console.log('Checking for updates with URL:', `https://${options.hostname}${options.path}`);
+
     const req = https.get(options, (res) => {
       let data = '';
       res.on('data', chunk => { data += chunk; });
       res.on('end', () => {
         try {
+          console.log('GitHub API Response Status:', res.statusCode);
+          
           if (res.statusCode === 404) {
             throw new Error('Repository not found or no releases available');
           }
@@ -116,22 +120,32 @@ function checkForUpdates() {
             const resetTime = new Date(res.headers['x-ratelimit-reset'] * 1000);
             throw new Error(`API rate limit exceeded. Resets at ${resetTime.toLocaleString()}`);
           }
+          if (res.statusCode !== 200) {
+            throw new Error(`GitHub API returned status ${res.statusCode}`);
+          }
           
           const release = JSON.parse(data);
+          console.log('Release data:', {
+            tag_name: release.tag_name,
+            assets: release.assets.map(a => ({ name: a.name, url: a.browser_download_url }))
+          });
+
           const currentVersion = app.getVersion();
           const latestVersion = release.tag_name.replace('v', '');
           
           // Find the Windows installer asset
           const windowsAsset = release.assets.find(asset => 
+            asset.name === 'J5PMS-setup.exe' ||
             asset.name.toLowerCase().includes('setup.exe') || 
             asset.name.toLowerCase().endsWith('.exe')
           );
 
           if (!windowsAsset && release.assets.length > 0) {
-            console.log('Available assets:', release.assets.map(a => a.name));
+            console.log('Available assets:', release.assets.map(a => a.name).join(', '));
+            logError('No suitable Windows installer found in release assets');
           }
 
-          resolve({
+          const updateInfo = {
             hasUpdate: currentVersion < latestVersion,
             currentVersion,
             latestVersion,
@@ -139,8 +153,18 @@ function checkForUpdates() {
             releaseNotes: release.body || 'No release notes available',
             releaseName: release.name || `Version ${latestVersion}`,
             releaseDate: new Date(release.published_at).toLocaleDateString()
+          };
+
+          console.log('Update check result:', {
+            hasUpdate: updateInfo.hasUpdate,
+            currentVersion: updateInfo.currentVersion,
+            latestVersion: updateInfo.latestVersion,
+            downloadUrl: updateInfo.downloadUrl
           });
+
+          resolve(updateInfo);
         } catch (err) {
+          console.error('Error parsing update response:', err);
           reject(err);
         }
       });
@@ -237,6 +261,12 @@ function createControlPanel() {
       icon: iconPath,
       show: false  // Don't show until ready
     });
+
+    // Set the app icon for the taskbar/dock
+    if (process.platform === 'win32') {
+      controlPanel.setIcon(iconPath);
+      app.setAppUserModelId('com.j5pharmacy.pms');
+    }
 
     controlPanel.loadFile(path.join(__dirname, 'controlPanel.html'))
       .catch(err => logError(`Failed to load control panel: ${err}`));

@@ -1,6 +1,6 @@
 {
   "name": "j5pharmacy-backend",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Backend for J5 Pharmacy Management System",
   "author": "Zen Garden",
   "main": "./electron/main.js",
@@ -47,9 +47,10 @@
       "target": [
         "nsis"
       ],
-      "icon": "electron/icons/icon.ico",
-      "artifactName": "${productName}-Setup.${ext}",
-      "requestedExecutionLevel": "requireAdministrator"
+      "icon": "./electron/icons/icon.ico",
+      "artifactName": "J5PMS-setup.exe",
+      "requestedExecutionLevel": "requireAdministrator",
+      "executableName": "J5 Pharmacy PMS"
     },
     "nsis": {
       "oneClick": false,
@@ -57,7 +58,12 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "J5 Pharmacy PMS",
-      "include": "electron/installer.nsh"
+      "include": "electron/installer.nsh",
+      "installerIcon": "./electron/icons/icon.ico",
+      "uninstallerIcon": "./electron/icons/icon.ico",
+      "installerHeaderIcon": "./electron/icons/icon.ico",
+      "menuCategory": "J5 Pharmacy",
+      "perMachine": true
     },
     "asar": false
   },

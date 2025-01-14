@@ -1,6 +1,6 @@
 In updating the app, we will use the following format for the changelog:
 
-Current Version: 1.0.5
+Current Version: 1.0.6
 
 # Version Numbering (Semantic Versioning):
 MAJOR.MINOR.PATCH (e.g., 1.0.0)
