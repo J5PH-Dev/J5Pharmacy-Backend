@@ -138,14 +138,14 @@ function checkForUpdates() {
           
           // Find the Windows installer asset
           const windowsAsset = release.assets.find(asset => 
-            asset.name === 'J5PMS-setup.exe' ||
-            asset.name.toLowerCase().includes('setup.exe') || 
-            asset.name.toLowerCase().endsWith('.exe')
+            asset.name === 'J5PMS-setup.exe'
           );
 
           if (!windowsAsset && release.assets.length > 0) {
             console.log('Available assets:', release.assets.map(a => a.name).join(', '));
             logError('No suitable Windows installer found in release assets');
+            throw new Error('Installer not found in release assets. Available assets: ' + 
+              release.assets.map(a => a.name).join(', '));
           }
 
           const updateInfo = {
@@ -996,43 +996,140 @@ ipcMain.on('submit:report', async (event, reportData) => {
 
 // Add this function to download updates
 async function downloadUpdate(downloadUrl) {
+  const logMessage = `[${new Date().toLocaleTimeString()}] Starting download from URL: ${downloadUrl}`;
+  console.log(logMessage);
+  if (controlPanel) {
+    controlPanel.webContents.send('server:log', logMessage);
+  }
+
   return new Promise((resolve, reject) => {
     const https = require('https');
     const fs = require('fs');
     const downloadPath = path.join(app.getPath('downloads'), 'j5pms-update.exe');
     
+    const logDownloadPath = `[${new Date().toLocaleTimeString()}] Download path: ${downloadPath}`;
+    console.log(logDownloadPath);
+    if (controlPanel) {
+      controlPanel.webContents.send('server:log', logDownloadPath);
+    }
+
     const file = fs.createWriteStream(downloadPath);
     let receivedBytes = 0;
     let totalBytes = 0;
 
-    https.get(downloadUrl, (response) => {
+    const request = https.get(downloadUrl, {
+      headers: {
+        'User-Agent': 'J5-PMS-Updater',
+        'Accept': 'application/octet-stream',
+        'Authorization': `token ${process.env.GITHUB_TOKEN}`
+      }
+    }, (response) => {
+      const statusLog = `[${new Date().toLocaleTimeString()}] Download response status: ${response.statusCode} ${response.statusMessage}`;
+      console.log(statusLog);
+      if (controlPanel) {
+        controlPanel.webContents.send('server:log', statusLog);
+      }
+
+      if (response.statusCode === 302 || response.statusCode === 301) {
+        const redirectLog = `[${new Date().toLocaleTimeString()}] Redirecting to: ${response.headers.location}`;
+        console.log(redirectLog);
+        if (controlPanel) {
+          controlPanel.webContents.send('server:log', redirectLog);
+        }
+        // Handle redirect
+        const redirectRequest = https.get(response.headers.location, handleResponse);
+        redirectRequest.on('error', handleError);
+        redirectRequest.end();
+        return;
+      }
+
       if (response.statusCode !== 200) {
-        reject(new Error(`Failed to download update: ${response.statusMessage}`));
+        const errorMessage = `Failed to download update: ${response.statusMessage} (${response.statusCode})`;
+        const errorLog = `[${new Date().toLocaleTimeString()}] ${errorMessage}`;
+        console.error(errorLog);
+        if (controlPanel) {
+          controlPanel.webContents.send('server:log', errorLog);
+        }
+        reject(new Error(errorMessage));
         return;
       }
 
       totalBytes = parseInt(response.headers['content-length'], 10);
+      const bytesLog = `[${new Date().toLocaleTimeString()}] Total bytes to download: ${totalBytes}`;
+      console.log(bytesLog);
+      if (controlPanel) {
+        controlPanel.webContents.send('server:log', bytesLog);
+      }
       
       response.on('data', (chunk) => {
         receivedBytes += chunk.length;
         if (controlPanel) {
           const progress = (receivedBytes / totalBytes) * 100;
           controlPanel.webContents.send('update:download-progress', progress);
+          if (progress % 20 === 0) { // Log every 20% progress
+            const progressLog = `[${new Date().toLocaleTimeString()}] Download progress: ${Math.round(progress)}%`;
+            controlPanel.webContents.send('server:log', progressLog);
+          }
         }
       });
 
       response.pipe(file);
 
       file.on('finish', () => {
+        const completeLog = `[${new Date().toLocaleTimeString()}] Download completed successfully`;
+        console.log(completeLog);
+        if (controlPanel) {
+          controlPanel.webContents.send('server:log', completeLog);
+        }
         file.close();
         resolve(downloadPath);
       });
-    }).on('error', (err) => {
+    });
+
+    const handleError = (err) => {
+      const errorLog = `[${new Date().toLocaleTimeString()}] Download request error: ${err.message}`;
+      console.error(errorLog);
+      if (controlPanel) {
+        controlPanel.webContents.send('server:log', errorLog);
+      }
       fs.unlink(downloadPath, () => {});
       reject(err);
-    });
+    };
+
+    request.on('error', handleError);
+    request.end();
   });
 }
+
+// Add these IPC handlers for updates
+ipcMain.on('update:download', async () => {
+  try {
+    if (!pendingUpdate || !pendingUpdate.downloadUrl) {
+      const errorLog = `[${new Date().toLocaleTimeString()}] Update failed: No update available to download`;
+      console.error(errorLog);
+      if (controlPanel) {
+        controlPanel.webContents.send('server:log', errorLog);
+      }
+      throw new Error('No update available to download');
+    }
+
+    const downloadLog = `[${new Date().toLocaleTimeString()}] Starting update download process. URL: ${pendingUpdate.downloadUrl}`;
+    console.log(downloadLog);
+    if (controlPanel) {
+      controlPanel.webContents.send('server:log', downloadLog);
+    }
+
+    const installerPath = await downloadUpdate(pendingUpdate.downloadUrl);
+    await installUpdate(installerPath);
+  } catch (error) {
+    const errorLog = `[${new Date().toLocaleTimeString()}] Update process failed: ${error.message}`;
+    logError(errorLog);
+    if (controlPanel) {
+      controlPanel.webContents.send('server:log', errorLog);
+      controlPanel.webContents.send('update:download-error', error.message);
+    }
+  }
+});
 
 // Add this function to install updates
 async function installUpdate(installerPath) {
@@ -1056,21 +1153,4 @@ async function installUpdate(installerPath) {
     logError(`Failed to install update: ${error}`);
     throw error;
   }
-}
-
-// Add these IPC handlers for updates
-ipcMain.on('update:download', async () => {
-  try {
-    if (!pendingUpdate || !pendingUpdate.downloadUrl) {
-      throw new Error('No update available to download');
-    }
-
-    const installerPath = await downloadUpdate(pendingUpdate.downloadUrl);
-    await installUpdate(installerPath);
-  } catch (error) {
-    logError(`Update process failed: ${error}`);
-    if (controlPanel) {
-      controlPanel.webContents.send('update:download-error', error.message);
-    }
-  }
-}); 
+} 
