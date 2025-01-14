@@ -1,6 +1,49 @@
 const db = require('../config/database');
 const { getConvertTZString, getMySQLTimestamp } = require('../utils/timeZoneUtil');
 
+const getAllTransactions = async (req, res) => {
+    try {
+        const query = `
+            SELECT 
+                s.id,
+                s.invoice_number,
+                s.created_at,
+                s.total_amount,
+                s.discount_amount,
+                s.discount_type,
+                s.payment_method,
+                s.payment_status,
+                COALESCE(c.name, 'Walk-in Customer') as customer_name,
+                s.points_earned,
+                s.branch_id,
+                b.branch_name,
+                COUNT(si.id) as item_count,
+                GROUP_CONCAT(
+                    CONCAT(p.name, ' (', si.quantity, ')')
+                    SEPARATOR ', '
+                ) as items
+            FROM sales s
+            LEFT JOIN customers c ON s.customer_id = c.customer_id
+            LEFT JOIN branches b ON s.branch_id = b.branch_id
+            LEFT JOIN sale_items si ON s.id = si.sale_id
+            LEFT JOIN products p ON si.product_id = p.id
+            GROUP BY s.id, s.invoice_number, s.created_at, s.total_amount, 
+                     s.discount_amount, s.discount_type, s.payment_method, 
+                     s.payment_status, customer_name, s.points_earned, 
+                     s.branch_id, b.branch_name
+            ORDER BY s.created_at DESC`;
+
+        console.log('Fetching all transactions...');
+        const [results] = await db.pool.query(query);
+        console.log(`Successfully fetched ${results.length} transactions`);
+        
+        res.json(results);
+    } catch (error) {
+        console.error('Error fetching all transactions:', error);
+        res.status(500).json({ error: 'Failed to fetch transactions' });
+    }
+};
+
 // Get transaction summary with enhanced metrics
 const getTransactionSummary = async (req, res) => {
     try {
@@ -202,6 +245,7 @@ const getKeyMetrics = async (req, res) => {
 };
 
 module.exports = {
+    getAllTransactions,
     getTransactionSummary,
     getLatestTransactions,
     getKeyMetrics

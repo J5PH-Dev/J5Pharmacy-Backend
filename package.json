@@ -1,6 +1,6 @@
 {
   "name": "j5pharmacy-backend",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Backend for J5 Pharmacy Management System",
   "author": "Zen Garden",
   "main": "./electron/main.js",
