@@ -17,7 +17,7 @@
   },
   "build": {
     "appId": "com.j5pharmacy.pms",
-    "productName": "J5 Pharmacy Management System",
+    "productName": "J5 Pharmacy PMS",
     "directories": {
       "output": "dist"
     },
@@ -63,7 +63,10 @@
       "uninstallerIcon": "./electron/icons/icon.ico",
       "installerHeaderIcon": "./electron/icons/icon.ico",
       "menuCategory": "J5 Pharmacy",
-      "perMachine": true
+      "perMachine": true,
+      "deleteAppDataOnUninstall": true,
+      "guid": "j5pharmacy-pms",
+      "include": "./electron/installer.nsh"
     },
     "asar": false
   },

@@ -12,3 +12,37 @@
       Abort "Please run the installer again after installing Node.js."
   ${EndIf}
 !macroend 
+
+!macro customInstall
+  ; Set the icon for desktop shortcut
+  SetOutPath "$INSTDIR\resources\app\electron\icons"
+  File "${BUILD_RESOURCES_DIR}\..\electron\icons\icon.ico"
+  
+  ; Set the icon for the main executable
+  WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_FILENAME}.exe\DefaultIcon" "" "$INSTDIR\resources\app\electron\icons\icon.ico"
+  
+  ; Create desktop shortcut with correct icon
+  CreateShortCut "$DESKTOP\${PRODUCT_NAME}.lnk" "$INSTDIR\${PRODUCT_FILENAME}.exe" "" "$INSTDIR\resources\app\electron\icons\icon.ico"
+  
+  ; Create start menu shortcut with correct icon
+  CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\${PRODUCT_NAME}.lnk" "$INSTDIR\${PRODUCT_FILENAME}.exe" "" "$INSTDIR\resources\app\electron\icons\icon.ico"
+  
+  ; Write registry keys for proper icon and application paths
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\${PRODUCT_FILENAME}.exe" "" "$INSTDIR\${PRODUCT_FILENAME}.exe"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\${PRODUCT_FILENAME}.exe" "Path" "$INSTDIR"
+  
+  ; Set default icon for the application
+  WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_FILENAME}.exe\DefaultIcon" "" "$INSTDIR\resources\app\electron\icons\icon.ico"
+!macroend
+
+!macro customUnInstall
+  ; Clean up shortcuts
+  Delete "$DESKTOP\${PRODUCT_NAME}.lnk"
+  Delete "$SMPROGRAMS\${PRODUCT_NAME}\${PRODUCT_NAME}.lnk"
+  RMDir "$SMPROGRAMS\${PRODUCT_NAME}"
+  
+  ; Clean up registry
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\${PRODUCT_FILENAME}.exe"
+  DeleteRegKey HKLM "Software\Classes\Applications\${PRODUCT_FILENAME}.exe"
+!macroend 

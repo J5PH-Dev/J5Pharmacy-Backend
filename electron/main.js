@@ -10,6 +10,9 @@ const ping = require('ping');
 const nodemailer = require('nodemailer');
 dotenv.config(); // Load environment variables
 
+// Set the app user model ID for Windows
+app.setAppUserModelId('com.j5pharmacy.pms');
+
 let controlPanel;
 let browserWindow;
 let serverProcess;
@@ -246,6 +249,15 @@ function createControlPanel() {
     console.log('Loading icon from:', iconPath);
     console.log('Icon exists:', fs.existsSync(iconPath));
 
+    // Set app icon for Windows
+    if (process.platform === 'win32') {
+      try {
+        app.setAppUserModelId(process.execPath);
+      } catch (err) {
+        console.error('Failed to set AppUserModelId:', err);
+      }
+    }
+
     // 16:9 ratio with 1280px width
     controlPanel = new BrowserWindow({
       width: 1280,
@@ -265,7 +277,11 @@ function createControlPanel() {
     // Set the app icon for the taskbar/dock
     if (process.platform === 'win32') {
       controlPanel.setIcon(iconPath);
-      app.setAppUserModelId('com.j5pharmacy.pms');
+      // Force a refresh of the taskbar icon
+      controlPanel.setSkipTaskbar(true);
+      setTimeout(() => {
+        controlPanel.setSkipTaskbar(false);
+      }, 1000);
     }
 
     controlPanel.loadFile(path.join(__dirname, 'controlPanel.html'))
