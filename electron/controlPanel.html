@@ -2,134 +2,208 @@
 <html>
 <head>
     <title>PMS Backend Support</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
-        :root {
-            --primary-color: #2196F3;
-            --secondary-color: #4CAF50;
-            --danger-color: #f44336;
-            --warning-color: #ff9800;
-            --text-color: #333;
-            --bg-color: #f5f5f5;
-            --card-bg: #ffffff;
-        }
-
         body {
-            font-family: 'Segoe UI', Arial, sans-serif;
             margin: 0;
             padding: 20px;
-            background-color: var(--bg-color);
+            font-family: Arial, sans-serif;
             display: flex;
             flex-direction: column;
             height: 100vh;
-            color: var(--text-color);
+            overflow: hidden;
         }
 
         .header {
-            background-color: var(--card-bg);
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin-bottom: 20px;
         }
 
         .header h1 {
             margin: 0;
-            color: var(--primary-color);
+            color: #2196F3;
             font-size: 24px;
         }
 
-        .description {
+        .header p {
+            margin: 5px 0;
             color: #666;
-            margin-top: 10px;
-            font-size: 14px;
         }
 
         .main-content {
             display: flex;
-            gap: 20px;
             flex: 1;
+            gap: 20px;
+            min-height: 0;
         }
 
         .log-section {
             flex: 2;
             display: flex;
             flex-direction: column;
+            background: #1E1E1E;
+            border-radius: 8px;
+            padding: 10px;
+            height: calc(100vh - 250px);
+        }
+
+        #log {
+            flex: 1;
+            color: #00FF00;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 0;
+            padding: 10px;
+            overflow-y: auto;
+            white-space: pre-wrap;
         }
 
         .control-section {
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 15px;
-        }
-
-        .card {
-            background-color: var(--card-bg);
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .log-container {
-            background-color: #1e1e1e;
-            color: #00ff00;
-            padding: 15px;
-            border-radius: 10px;
-            font-family: 'Consolas', monospace;
-            flex: 1;
-            overflow-y: auto;
-            font-size: 13px;
-            line-height: 1.5;
-        }
-
-        .button-container {
-            display: grid;
-            grid-template-columns: 1fr;
             gap: 10px;
         }
 
-        .button {
-            padding: 12px 20px;
-            font-size: 14px;
-            cursor: pointer;
+        .status-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 10px;
+        }
+
+        .status-text {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            padding: 12px;
             border: none;
-            border-radius: 5px;
-            color: white;
-            transition: all 0.3s ease;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
         }
 
-        .button i {
-            font-size: 16px;
+        button:hover {
+            opacity: 0.9;
         }
 
-        .button.primary { background-color: var(--primary-color); }
-        .button.primary:hover { background-color: #1976D2; }
-        
-        .button.success { background-color: var(--secondary-color); }
-        .button.success:hover { background-color: #388E3C; }
-        
-        .button.danger { background-color: var(--danger-color); }
-        .button.danger:hover { background-color: #D32F2F; }
-        
-        .button.warning { background-color: var(--warning-color); }
-        .button.warning:hover { background-color: #F57C00; }
-
-        .button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
+        .start-btn {
+            background-color: #4CAF50;
+            color: white;
         }
 
-        .status {
-            padding: 15px;
-            border-radius: 5px;
-            font-weight: 500;
-            text-align: center;
-            background-color: var(--card-bg);
+        .stop-btn {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .restart-btn {
+            background-color: #FF9800;
+            color: white;
+        }
+
+        .update-btn {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        .browser-btn {
+            background-color: #607D8B;
+            color: white;
+        }
+
+        .utility-buttons {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            background: #2c2c2c;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .utility-btn {
+            background-color: #2196F3;
+            color: white;
+            padding: 8px 16px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .utility-btn:hover {
+            background-color: #1976D2;
+        }
+
+        .logo-container {
+            flex: 1 0 auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            margin-top: 20px;
+            background: white;
+            border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-height: 150px;
+            max-height: 250px;
+        }
+
+        .logo-container img {
+            max-width: 100%;
+            height: auto;
+            width: auto;
+            max-height: 120px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .logo-text {
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .network-status {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .network-connected {
+            background-color: #E8F5E9;
+            color: #2E7D32;
+        }
+
+        .network-disconnected {
+            background-color: #FFEBEE;
+            color: #C62828;
+        }
+
+        .update-status {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            color: #2196F3;
         }
 
         /* Modal Styles */
@@ -146,7 +220,7 @@
 
         .modal-content {
             position: relative;
-            background-color: var(--card-bg);
+            background-color: white;
             margin: 5% auto;
             padding: 20px;
             width: 70%;
@@ -163,7 +237,7 @@
 
         .modal-title {
             margin: 0;
-            color: var(--primary-color);
+            color: #2196F3;
             font-size: 20px;
         }
 
@@ -182,7 +256,7 @@
         }
 
         .close:hover {
-            color: var(--danger-color);
+            color: #f44336;
         }
 
         /* Developer Card Styles */
@@ -199,16 +273,9 @@
             text-align: center;
         }
 
-        .developer-card img {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            margin-bottom: 10px;
-        }
-
         .developer-card h3 {
             margin: 0;
-            color: var(--primary-color);
+            color: #2196F3;
             font-size: 16px;
         }
 
@@ -217,39 +284,127 @@
             color: #666;
             font-size: 14px;
         }
+
+        /* Report Problem Button */
+        .report-btn {
+            background-color: #E91E63;
+            color: white;
+            margin-top: 10px;
+        }
+
+        /* Report Problem Modal Styles */
+        .report-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group select,
+        .form-group input,
+        .form-group textarea {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-group select {
+            background-color: white;
+        }
+
+        .image-preview {
+            max-width: 200px;
+            max-height: 200px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .submit-report {
+            background-color: #E91E63;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .submit-report:hover {
+            background-color: #D81B60;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>J5 Pharmacy Management System - Backend Support</h1>
-        <div class="description">
-            Control panel for managing the J5 Pharmacy Management System backend server and system monitoring.
-        </div>
+        <p>Control panel for managing the J5 Pharmacy Management System backend server and system monitoring.</p>
     </div>
 
     <div class="main-content">
         <div class="log-section">
-            <div class="log-container" id="logContainer"></div>
+            <div class="utility-buttons">
+                <button id="openLogs" class="utility-btn">
+                    <i class="fas fa-folder-open"></i> Open Logs Folder
+                </button>
+                <button id="checkNetwork" class="utility-btn">
+                    <i class="fas fa-network-wired"></i> Check Network
+                </button>
+                <button id="saveSystemLogs" class="utility-btn">
+                    <i class="fas fa-save"></i> Save System Logs
+                </button>
+            </div>
+            <pre id="log"></pre>
         </div>
 
         <div class="control-section">
-            <div class="status card" id="status"></div>
-            <div class="button-container card">
-                <button id="startBtn" class="button success">
-                    <i>▶</i> Start Server
+            <div class="status-card">
+                <div id="serverStatus" class="status-text">Server is stopped</div>
+                <div id="networkStatus" class="network-status">Checking network...</div>
+                <div id="updateStatus" class="update-status"></div>
+            </div>
+
+            <div class="button-group">
+                <button id="startServer" class="start-btn">
+                    <i class="fas fa-play"></i> Start Server
                 </button>
-                <button id="stopBtn" class="button danger" disabled>
-                    <i>⬛</i> Stop Server
+                <button id="stopServer" class="stop-btn">
+                    <i class="fas fa-stop"></i> Stop Server
                 </button>
-                <button id="restartBtn" class="button warning" disabled>
-                    <i>🔄</i> Restart Server
+                <button id="restartServer" class="restart-btn">
+                    <i class="fas fa-sync"></i> Restart Server
                 </button>
-                <button id="updateBtn" class="button primary">
-                    <i>⭮</i> Check for Updates
+                <button id="checkUpdate" class="update-btn">
+                    <i class="fas fa-download"></i> Check for Updates
                 </button>
-                <button id="openBrowserBtn" class="button primary" disabled>
-                    <i>🌐</i> Open Browser
+                <button id="openBrowser" class="browser-btn">
+                    <i class="fas fa-external-link-alt"></i> Open Browser
                 </button>
+                <button id="reportProblem" class="report-btn">
+                    <i class="fas fa-bug"></i> Report Problem
+                </button>
+            </div>
+
+            <div class="logo-container">
+                <img src="icons/icon.png" alt="J5 Pharmacy Logo">
+                <div class="logo-text">J5 Pharmacy Management System</div>
             </div>
         </div>
     </div>
@@ -281,7 +436,9 @@
                 <ul>
                     <li>Check the log window for error messages</li>
                     <li>Ensure all required services are running</li>
-                    <li>Verify network connectivity</li>
+                    <li>Verify network connectivity using the "Check Network" button</li>
+                    <li>In case of errors, use the "Save System Logs" button to generate a log file and contact the development team with the file attached</li>
+                    <li>Error logs are automatically generated and saved in the application's data directory when crashes occur</li>
                 </ul>
             </div>
         </div>
@@ -316,7 +473,7 @@
                 </ul>
 
                 <h3>Version Information</h3>
-                <p>Version: 1.0.0</p>
+                <p>Version: 1.0.2</p>
                 <p>© 2024 J5 Pharmacy. All rights reserved.</p>
                 
                 <h3>Support</h3>
@@ -364,199 +521,217 @@
         </div>
     </div>
 
+    <!-- Report Problem Modal -->
+    <div id="reportModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="modal-header">
+                <h2 class="modal-title">Report a Problem</h2>
+            </div>
+            <div class="modal-body">
+                <form id="reportForm" class="report-form">
+                    <div class="form-group">
+                        <label for="problemCategory">Problem Category</label>
+                        <select id="problemCategory" required>
+                            <option value="">Select a category</option>
+                            <option value="server">Server Issues</option>
+                            <option value="database">Database Connection</option>
+                            <option value="performance">Performance Issues</option>
+                            <option value="ui">User Interface Issues</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="problemTitle">Brief Description</label>
+                        <input type="text" id="problemTitle" placeholder="Enter a brief title for the issue" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="problemDescription">Detailed Description</label>
+                        <textarea id="problemDescription" placeholder="Please describe what happened and steps to reproduce the issue" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="imageAttachment">Attach Screenshots (optional)</label>
+                        <input type="file" id="imageAttachment" accept="image/*" multiple>
+                        <div id="imagePreview" class="image-preview"></div>
+                    </div>
+                    <button type="submit" class="submit-report">
+                        <i class="fas fa-paper-plane"></i> Submit Report
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
-        const { ipcRenderer, shell } = require('electron');
-        
-        // Buttons and containers
-        const startBtn = document.getElementById('startBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const restartBtn = document.getElementById('restartBtn');
-        const updateBtn = document.getElementById('updateBtn');
-        const openBrowserBtn = document.getElementById('openBrowserBtn');
-        const logContainer = document.getElementById('logContainer');
-        const status = document.getElementById('status');
-        const updateNotification = document.getElementById('updateNotification');
-        const downloadLink = document.getElementById('downloadLink');
+        const { ipcRenderer } = require('electron');
+        const log = document.getElementById('log');
+        const serverStatus = document.getElementById('serverStatus');
+        const networkStatus = document.getElementById('networkStatus');
+        const updateStatus = document.getElementById('updateStatus');
+        const stopServerBtn = document.getElementById('stopServer');
+        const restartServerBtn = document.getElementById('restartServer');
+        const openBrowserBtn = document.getElementById('openBrowser');
 
-        // Modal elements
-        const modal = document.getElementById('updateModal');
-        const modalClose = document.getElementById('modalClose');
-        const modalUpdate = document.getElementById('modalUpdate');
-        const closeBtn = document.getElementsByClassName('close')[0];
-        const modalVersion = document.getElementById('modalVersion');
-        const modalDate = document.getElementById('modalDate');
-        const modalChangelog = document.getElementById('modalChangelog');
-        const criticalUpdateModal = document.getElementById('criticalUpdateModal');
-        const criticalModalVersion = document.getElementById('criticalModalVersion');
-        const criticalModalDate = document.getElementById('criticalModalDate');
-        const criticalModalChangelog = document.getElementById('criticalModalChangelog');
-        const criticalReason = document.getElementById('criticalReason');
-        const criticalModalUpdate = document.getElementById('criticalModalUpdate');
-        
-        let serverRunning = false;
-        let currentUpdateInfo = null;
+        // Initially disable stop, restart, and browser buttons
+        stopServerBtn.disabled = true;
+        restartServerBtn.disabled = true;
+        openBrowserBtn.disabled = true;
 
-        // Modal functions
-        function showUpdateModal(updateInfo) {
-            currentUpdateInfo = updateInfo;
-            modalVersion.textContent = `v${updateInfo.latestVersion}`;
-            modalDate.textContent = updateInfo.releaseDate;
-            modalChangelog.textContent = updateInfo.releaseNotes;
-            modal.style.display = 'block';
+        // Add disabled button styles
+        const styleSheet = document.styleSheets[1]; // Get the main stylesheet
+        styleSheet.insertRule(`
+            button:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+                filter: grayscale(100%);
+            }
+        `, styleSheet.cssRules.length);
+
+        function appendLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            log.textContent += `[${timestamp}] ${message}\n`;
+            log.scrollTop = log.scrollHeight;
         }
 
-        function hideUpdateModal() {
-            if (currentUpdateInfo && currentUpdateInfo.forceUpdate) {
-                // Don't allow hiding critical update modal
+        // Server controls
+        document.getElementById('startServer').addEventListener('click', () => {
+            appendLog('Starting server...');
+            ipcRenderer.send('server:start');
+        });
+
+        stopServerBtn.addEventListener('click', () => {
+            appendLog('Stopping server...');
+            ipcRenderer.send('server:stop');
+        });
+
+        restartServerBtn.addEventListener('click', () => {
+            appendLog('Restarting server...');
+            ipcRenderer.send('server:restart');
+        });
+
+        document.getElementById('checkUpdate').addEventListener('click', () => {
+            appendLog('Checking for updates...');
+            ipcRenderer.send('check:update');
+        });
+
+        document.getElementById('openBrowser').addEventListener('click', () => {
+            if (!serverRunning) {
+                appendLog('Cannot open browser: Server is not running');
                 return;
             }
-            modal.style.display = 'none';
-            criticalUpdateModal.style.display = 'none';
-        }
-
-        // Modal event listeners
-        modalClose.onclick = () => {
-            if (!currentUpdateInfo?.forceUpdate) {
-                hideUpdateModal();
-                ipcRenderer.send('update:postpone');
-            }
-        };
-
-        closeBtn.onclick = hideUpdateModal;
-        modalUpdate.onclick = () => {
-            if (currentUpdateInfo && currentUpdateInfo.downloadUrl) {
-                shell.openExternal(currentUpdateInfo.downloadUrl);
-            }
-            hideUpdateModal();
-        };
-
-        window.onclick = (event) => {
-            if (event.target == modal) {
-                hideUpdateModal();
-            }
-        };
-
-        // Event Listeners
-        startBtn.addEventListener('click', () => {
-            ipcRenderer.send('server:start');
-            appendLog('Starting server...');
-            startBtn.disabled = true;
-        });
-
-        stopBtn.addEventListener('click', () => {
-            ipcRenderer.send('server:stop');
-            appendLog('Stopping server...');
-        });
-
-        restartBtn.addEventListener('click', () => {
-            ipcRenderer.send('server:restart');
-            appendLog('Restarting server...');
-        });
-
-        updateBtn.addEventListener('click', () => {
-            ipcRenderer.send('check:update');
-            appendLog('Checking for updates...');
-            updateNotification.style.display = 'none';
-        });
-
-        downloadLink.addEventListener('click', () => {
-            if (currentUpdateInfo) {
-                showUpdateModal(currentUpdateInfo);
-            }
-        });
-
-        openBrowserBtn.addEventListener('click', () => {
-            ipcRenderer.send('open:browser');
             appendLog('Opening browser...');
+            ipcRenderer.send('open:browser');
         });
 
-        // IPC Listeners
+        document.getElementById('openLogs').addEventListener('click', () => {
+            appendLog('Opening logs folder...');
+            ipcRenderer.send('open:logs');
+        });
+
+        document.getElementById('checkNetwork').addEventListener('click', () => {
+            appendLog('Checking network connectivity...');
+            ipcRenderer.send('check:network');
+            networkStatus.textContent = 'Checking network...';
+            networkStatus.className = 'network-status';
+        });
+
+        document.getElementById('saveSystemLogs').addEventListener('click', () => {
+            appendLog('Saving system logs...');
+            ipcRenderer.send('save:systemLogs', log.textContent);
+        });
+
+        // IPC handlers
+        ipcRenderer.on('server:started', () => {
+            serverStatus.textContent = 'Server is running';
+            serverStatus.style.color = '#4CAF50';
+            appendLog('Server started successfully');
+            // Enable stop, restart, and browser buttons
+            stopServerBtn.disabled = false;
+            restartServerBtn.disabled = false;
+            openBrowserBtn.disabled = false;
+            serverRunning = true;
+        });
+
+        ipcRenderer.on('server:stopped', () => {
+            serverStatus.textContent = 'Server is stopped';
+            serverStatus.style.color = '#f44336';
+            appendLog('Server stopped');
+            // Disable stop, restart, and browser buttons
+            stopServerBtn.disabled = true;
+            restartServerBtn.disabled = true;
+            openBrowserBtn.disabled = true;
+            serverRunning = false;
+        });
+
         ipcRenderer.on('server:log', (event, message) => {
             appendLog(message);
         });
 
-        ipcRenderer.on('server:started', () => {
-            serverRunning = true;
-            startBtn.disabled = true;
-            stopBtn.disabled = false;
-            restartBtn.disabled = false;
-            openBrowserBtn.disabled = false;
-            status.textContent = 'Server is running';
-            status.style.color = '#4CAF50';
-        });
-
-        ipcRenderer.on('server:stopped', () => {
-            serverRunning = false;
-            startBtn.disabled = false;
-            stopBtn.disabled = true;
-            restartBtn.disabled = true;
-            openBrowserBtn.disabled = true;
-            status.textContent = 'Server is stopped';
-            status.style.color = '#f44336';
+        ipcRenderer.on('network:status', (event, { connected, latency }) => {
+            if (connected) {
+                networkStatus.textContent = `Connected to Internet (${latency}ms)`;
+                networkStatus.className = 'network-status network-connected';
+                appendLog(`Network connection successful (${latency}ms)`);
+            } else {
+                networkStatus.textContent = 'No Internet Connection';
+                networkStatus.className = 'network-status network-disconnected';
+                appendLog('Network connection failed');
+            }
         });
 
         ipcRenderer.on('update:status', (event, message) => {
-            status.textContent = message;
-            status.style.color = '#2196F3';
+            updateStatus.textContent = message;
+            appendLog(message);
         });
 
-        ipcRenderer.on('update:available', (event, updateInfo) => {
-            currentUpdateInfo = updateInfo;
-            updateNotification.style.display = 'block';
-            updateBtn.innerHTML = `Update Client <span class="update-badge">1</span>`;
-            showUpdateModal(updateInfo);
+        ipcRenderer.on('logs:saved', (event, path) => {
+            appendLog(`Logs saved to: ${path}`);
         });
 
-        ipcRenderer.on('update:critical', (event, updateInfo) => {
-            currentUpdateInfo = updateInfo;
-            updateNotification.style.display = 'block';
-            updateBtn.innerHTML = `Update Client <span class="update-badge">!</span>`;
-            showCriticalUpdateModal(updateInfo);
+        // Initial log and checks
+        appendLog('Application started');
+        
+        // Check for updates on startup
+        setTimeout(() => {
+            appendLog('Performing initial update check...');
+            ipcRenderer.send('check:update');
+        }, 2000);
+
+        // Automatic network check on startup
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                ipcRenderer.send('check:network');
+            }, 1000);
         });
 
-        function appendLog(message) {
-            const line = document.createElement('div');
-            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-            logContainer.appendChild(line);
-            logContainer.scrollTop = logContainer.scrollHeight;
-        }
-
-        // Initialize status
-        status.textContent = 'Server is stopped';
-        status.style.color = '#f44336';
-
-        function showCriticalUpdateModal(updateInfo) {
-            currentUpdateInfo = updateInfo;
-            criticalModalVersion.textContent = `v${updateInfo.latestVersion}`;
-            criticalModalDate.textContent = updateInfo.releaseDate;
-            criticalModalChangelog.textContent = updateInfo.releaseNotes;
-            criticalReason.textContent = updateInfo.reason;
-            criticalUpdateModal.style.display = 'block';
-            
-            // Disable close button for critical updates
-            if (updateInfo.forceUpdate) {
-                closeBtn.style.display = 'none';
-            }
-        }
-
-        criticalModalUpdate.onclick = () => {
-            if (currentUpdateInfo && currentUpdateInfo.downloadUrl) {
-                shell.openExternal(currentUpdateInfo.downloadUrl);
-                ipcRenderer.send('update:completed');
-            }
-        };
-
-        // Modal handling
+        // Add these after the existing script content
         const modals = {
             instructions: document.getElementById('instructionsModal'),
             about: document.getElementById('aboutModal'),
             developers: document.getElementById('developersModal')
         };
 
+        // IPC handlers for showing modals
+        ipcRenderer.on('show:instructions', () => {
+            appendLog('Opening Instructions...');
+            modals.instructions.style.display = 'block';
+        });
+
+        ipcRenderer.on('show:about', () => {
+            appendLog('Opening About...');
+            modals.about.style.display = 'block';
+        });
+
+        ipcRenderer.on('show:developers', () => {
+            appendLog('Opening Developers...');
+            modals.developers.style.display = 'block';
+        });
+
         // Close button handling for all modals
         document.querySelectorAll('.close').forEach(closeBtn => {
             closeBtn.onclick = function() {
                 this.closest('.modal').style.display = 'none';
+                appendLog('Closed modal');
             }
         });
 
@@ -564,20 +739,123 @@
         window.onclick = function(event) {
             if (event.target.classList.contains('modal')) {
                 event.target.style.display = 'none';
+                appendLog('Closed modal');
             }
         }
 
-        // IPC handlers for showing modals
-        ipcRenderer.on('show:instructions', () => {
-            modals.instructions.style.display = 'block';
+        // Report Problem functionality
+        const reportModal = document.getElementById('reportModal');
+        const reportBtn = document.getElementById('reportProblem');
+        const reportForm = document.getElementById('reportForm');
+        const imageAttachment = document.getElementById('imageAttachment');
+        const imagePreview = document.getElementById('imagePreview');
+
+        reportBtn.addEventListener('click', () => {
+            appendLog('Opening Report Problem form...');
+            reportModal.style.display = 'block';
         });
 
-        ipcRenderer.on('show:about', () => {
-            modals.about.style.display = 'block';
+        imageAttachment.addEventListener('change', (e) => {
+            imagePreview.innerHTML = '';
+            imagePreview.style.display = 'block';
+            
+            [...e.target.files].forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.maxWidth = '200px';
+                    img.style.marginRight = '10px';
+                    img.style.marginBottom = '10px';
+                    imagePreview.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
         });
 
-        ipcRenderer.on('show:developers', () => {
-            modals.developers.style.display = 'block';
+        reportForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            appendLog('Submitting problem report...');
+
+            // Disable submit button and show loading state
+            const submitBtn = reportForm.querySelector('.submit-report');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+
+            try {
+                // Process images first
+                const imagePromises = [...imageAttachment.files].map(file => {
+                    return new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            resolve({
+                                name: file.name,
+                                data: e.target.result
+                            });
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                });
+
+                const processedImages = await Promise.all(imagePromises);
+
+                const formData = {
+                    category: document.getElementById('problemCategory').value,
+                    title: document.getElementById('problemTitle').value,
+                    description: document.getElementById('problemDescription').value,
+                    systemLogs: log.textContent,
+                    images: processedImages
+                };
+
+                ipcRenderer.send('submit:report', formData);
+            } catch (error) {
+                appendLog(`Error processing form data: ${error.message}`);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Report';
+            }
+        });
+
+        // Add handlers for report submission response
+        ipcRenderer.on('report:sent', (event, message) => {
+            appendLog('Problem report sent successfully');
+            const submitBtn = reportForm.querySelector('.submit-report');
+            submitBtn.innerHTML = '<i class="fas fa-check"></i> Sent!';
+            setTimeout(() => {
+                reportModal.style.display = 'none';
+                reportForm.reset();
+                imagePreview.style.display = 'none';
+                imagePreview.innerHTML = '';
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Report';
+            }, 2000);
+        });
+
+        ipcRenderer.on('report:error', (event, error) => {
+            appendLog(`Error sending report: ${error}`);
+            const submitBtn = reportForm.querySelector('.submit-report');
+            submitBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed to Send';
+            submitBtn.style.backgroundColor = '#f44336';
+            
+            // Show error message to user
+            const errorDiv = document.createElement('div');
+            errorDiv.style.color = '#f44336';
+            errorDiv.style.marginTop = '10px';
+            errorDiv.style.fontSize = '14px';
+            errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${error}`;
+            
+            const existingError = reportForm.querySelector('.error-message');
+            if (existingError) {
+                existingError.remove();
+            }
+            errorDiv.className = 'error-message';
+            reportForm.appendChild(errorDiv);
+
+            // Reset button after 3 seconds
+            setTimeout(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Report';
+                submitBtn.style.backgroundColor = '#E91E63';
+            }, 3000);
         });
     </script>
 </body>

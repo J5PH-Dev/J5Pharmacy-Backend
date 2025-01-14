@@ -1,6 +1,6 @@
 {
   "name": "j5pharmacy-backend",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Backend for J5 Pharmacy Management System",
   "author": "Zen Garden",
   "main": "./electron/main.js",
@@ -37,25 +37,29 @@
       "config/**/*",
       "node_modules/**/*"
     ],
+    "extraResources": [
+      {
+        "from": ".env",
+        "to": ".env"
+      }
+    ],
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "electron/icons/icon.ico",
-      "artifactName": "${productName}-Setup.${ext}"
+      "artifactName": "${productName}-Setup.${ext}",
+      "requestedExecutionLevel": "requireAdministrator"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "J5 Pharmacy PMS"
+      "shortcutName": "J5 Pharmacy PMS",
+      "include": "electron/installer.nsh"
     },
-    "asar": false,
-    "mac": {
-      "icon": "electron/icons/icon.icns"
-    },
-    "linux": {
-      "icon": "electron/icons/icon.png"
-    }
+    "asar": false
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -68,6 +72,7 @@
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.9.1",
     "nodemailer": "^6.9.16",
+    "ping": "^0.4.4",
     "socket.io": "^4.8.1",
     "xlsx": "^0.18.5"
   },

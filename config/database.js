@@ -14,11 +14,7 @@ const pool = mysql.createPool({
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
   multipleStatements: true,
-  connectTimeout: 30000,
-  acquireTimeout: 30000,
-  timeout: 60000,
-  maxRetries: 3,
-  retryDelay: 1000
+  connectTimeout: 30000
 });
 
 // Convert pool to use promises
@@ -37,9 +33,11 @@ const testConnection = async () => {
     // Implement retry logic
     let retries = 0;
     const maxRetries = 3;
+    const retryDelay = 1000; // 1 second delay between retries
+    
     while (retries < maxRetries) {
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000 * (retries + 1)));
+        await new Promise(resolve => setTimeout(resolve, retryDelay * (retries + 1)));
         const [rows] = await promisePool.query('SELECT 1');
         console.log('Database connection successful after retry');
         return;

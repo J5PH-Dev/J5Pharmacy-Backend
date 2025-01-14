@@ -4,6 +4,11 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const https = require('https');
 const isDev = process.env.NODE_ENV === 'development';
+const dotenv = require('dotenv');
+const dns = require('dns');
+const ping = require('ping');
+const nodemailer = require('nodemailer');
+dotenv.config(); // Load environment variables
 
 let controlPanel;
 let browserWindow;
@@ -13,6 +18,8 @@ let updateCheckInterval;
 let pendingUpdate = null;
 let updatePostponeCount = 0;
 const MAX_POSTPONE_COUNT = 3; // Maximum times a user can postpone an update
+let nodeCheckWindow;
+let splashScreen;
 
 // Store server state
 function saveServerState(state) {
@@ -59,6 +66,7 @@ function logError(error) {
     ? path.join(__dirname, '../errorlog.txt')
     : path.join(app.getPath('userData'), 'errorlog.txt');
 
+  console.error(logMessage); // Add console logging for immediate feedback
   fs.appendFile(logPath, logMessage, (err) => {
     if (err) console.error('Failed to write to error log:', err);
   });
@@ -77,12 +85,17 @@ function checkForUpdates() {
   return new Promise((resolve, reject) => {
     const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
     
+    // Load environment variables if not already loaded
+    if (!process.env.GITHUB_TOKEN) {
+      loadEnvConfig();
+    }
+    
     const options = {
       hostname: 'api.github.com',
       path: '/repos/J5PH-Dev/J5Pharmacy-Backend/releases/latest',
       headers: {
         'User-Agent': 'J5-PMS-Updater',
-        'Authorization': `token ${GITHUB_TOKEN}`,
+        'Authorization': `token ${process.env.GITHUB_TOKEN}`,
         'Accept': 'application/vnd.github.v3+json'
       }
     };
@@ -108,9 +121,6 @@ function checkForUpdates() {
           const currentVersion = app.getVersion();
           const latestVersion = release.tag_name.replace('v', '');
           
-          // Parse criticality from release notes
-          const isCritical = release.body?.toLowerCase().includes('#critical');
-          
           resolve({
             hasUpdate: currentVersion < latestVersion,
             currentVersion,
@@ -118,8 +128,7 @@ function checkForUpdates() {
             downloadUrl: release.assets[0]?.browser_download_url,
             releaseNotes: release.body || 'No release notes available',
             releaseName: release.name || `Version ${latestVersion}`,
-            releaseDate: new Date(release.published_at).toLocaleDateString(),
-            isCritical: isCritical
+            releaseDate: new Date(release.published_at).toLocaleDateString()
           });
         } catch (err) {
           reject(err);
@@ -127,7 +136,12 @@ function checkForUpdates() {
       });
     });
 
-    req.on('error', reject);
+    req.on('error', (error) => {
+      console.error('Update check error:', error);
+      logError(`Update check error: ${error.message}`);
+      reject(error);
+    });
+
     req.end();
   });
 }
@@ -151,28 +165,19 @@ function createMenu() {
         {
           label: 'Instructions',
           click: () => {
-            if (controlPanel) {
-              controlPanel.webContents.send('show:instructions');
-            }
+            controlPanel.webContents.send('show:instructions');
           }
-        },
-        {
-          type: 'separator'
         },
         {
           label: 'About',
           click: () => {
-            if (controlPanel) {
-              controlPanel.webContents.send('show:about');
-            }
+            controlPanel.webContents.send('show:about');
           }
         },
         {
           label: 'Developers',
           click: () => {
-            if (controlPanel) {
-              controlPanel.webContents.send('show:developers');
-            }
+            controlPanel.webContents.send('show:developers');
           }
         }
       ]
@@ -183,40 +188,85 @@ function createMenu() {
   Menu.setApplicationMenu(menu);
 }
 
-function createControlPanel() {
-  controlPanel = new BrowserWindow({
-    width: 1000,
-    height: 700,
+function createSplashScreen() {
+  splashScreen = new BrowserWindow({
+    width: 500,
+    height: 300,
+    frame: false,
+    transparent: false,
+    alwaysOnTop: true,
+    resizable: false,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
-    },
-    title: 'PMS Backend Support',
-    icon: path.join(__dirname, 'icons', process.platform === 'win32' 
-      ? 'icon.ico' 
-      : process.platform === 'darwin'
-      ? 'icon.icns'
-      : 'icon.png')
-  });
-
-  controlPanel.loadFile(path.join(__dirname, 'controlPanel.html'));
-  createMenu();
-
-  if (isDev) {
-    controlPanel.webContents.openDevTools();
-  }
-
-  controlPanel.on('closed', () => {
-    stopServer();
-    if (browserWindow) {
-      browserWindow.close();
     }
-    controlPanel = null;
   });
 
-  // Check if server was running before reload
-  if (loadServerState()) {
-    startServer();
+  splashScreen.loadFile(path.join(__dirname, 'splash.html'));
+  splashScreen.center();
+}
+
+function createControlPanel() {
+  try {
+    const iconPath = path.join(__dirname, 'icons', 'icon.ico');
+    console.log('Loading icon from:', iconPath);
+    console.log('Icon exists:', fs.existsSync(iconPath));
+
+    // 16:9 ratio with 1280px width
+    controlPanel = new BrowserWindow({
+      width: 1280,
+      height: 720,
+      minWidth: 1280,
+      minHeight: 720,
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: false,
+        enableRemoteModule: true
+      },
+      title: 'PMS Backend Support',
+      icon: iconPath,
+      show: false  // Don't show until ready
+    });
+
+    controlPanel.loadFile(path.join(__dirname, 'controlPanel.html'))
+      .catch(err => logError(`Failed to load control panel: ${err}`));
+    
+    createMenu();
+
+    // Once ready, maximize, show and close splash screen
+    controlPanel.once('ready-to-show', () => {
+      setTimeout(() => {
+        controlPanel.maximize();
+        controlPanel.show();
+        if (splashScreen) {
+          splashScreen.close();
+          splashScreen = null;
+        }
+      }, 5000); // Show splash for at least 2 seconds
+    });
+
+    if (isDev) {
+      controlPanel.webContents.openDevTools();
+    }
+
+    controlPanel.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+      logError(`Window failed to load: ${errorDescription} (${errorCode})`);
+    });
+
+    controlPanel.on('closed', () => {
+      stopServer();
+      if (browserWindow) {
+        browserWindow.close();
+      }
+      controlPanel = null;
+    });
+
+    // Check if server was running before reload
+    if (loadServerState()) {
+      startServer();
+    }
+  } catch (err) {
+    logError(`Failed to create control panel: ${err}`);
   }
 }
 
@@ -247,85 +297,103 @@ function getServerPath() {
   return path.join(getAppPath(), 'server.js');
 }
 
-function startServer() {
-  if (serverProcess) return;
+// Add this function to handle .env in production
+function loadEnvConfig() {
+  try {
+    const envPath = isDev 
+      ? path.join(__dirname, '..', '.env')
+      : path.join(process.resourcesPath, '.env');
+    
+    console.log('Loading .env from:', envPath);
+    
+    if (fs.existsSync(envPath)) {
+      const envConfig = dotenv.parse(fs.readFileSync(envPath));
+      Object.keys(envConfig).forEach(key => {
+        process.env[key] = envConfig[key];
+      });
+      console.log('Environment variables loaded successfully');
+    } else {
+      console.error('.env file not found at:', envPath);
+    }
+  } catch (err) {
+    console.error('Error loading .env:', err);
+  }
+}
 
-  const serverPath = getServerPath();
-  console.log('Starting server from:', serverPath);
-  
-  const serverDir = path.dirname(serverPath);
-  console.log('Server directory:', serverDir);
-  
-  // Ensure all required files exist
-  const requiredFiles = ['server.js', 'package.json', '.env'];
-  for (const file of requiredFiles) {
-    const filePath = path.join(serverDir, file);
-    console.log('Checking file:', filePath);
-    if (!fs.existsSync(filePath)) {
-      const error = `Required file not found: ${file}`;
-      logError(error);
+function startServer() {
+  try {
+    if (serverProcess) return;
+
+    const serverPath = getServerPath();
+    console.log('Starting server from:', serverPath);
+    
+    // Load environment variables before starting server
+    loadEnvConfig();
+    
+    if (!fs.existsSync(serverPath)) {
+      logError(`Server file not found: ${serverPath}`);
       if (controlPanel) {
-        controlPanel.webContents.send('server:log', `Error: ${error}`);
+        controlPanel.webContents.send('server:log', `Error: Server file not found`);
       }
       return;
     }
-  }
-  
-  serverProcess = spawn('node', [serverPath], {
-    stdio: ['pipe', 'pipe', 'pipe'],
-    cwd: serverDir,
-    env: {
-      ...process.env,
-      NODE_ENV: isDev ? 'development' : 'production',
-      PATH: process.env.PATH
-    }
-  });
 
-  serverProcess.stdout.on('data', (data) => {
-    const logMessage = `Server: ${data}`;
-    if (controlPanel) {
-      controlPanel.webContents.send('server:log', logMessage);
-    }
-    console.log(logMessage);
-    
-    if (data.includes('Server is running')) {
-      serverRunning = true;
-      saveServerState(true);
-      if (controlPanel) {
-        controlPanel.webContents.send('server:started');
+    serverProcess = spawn('node', [serverPath], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: {
+        ...process.env,
+        NODE_ENV: isDev ? 'development' : 'production',
+        PATH: process.env.PATH
       }
-    }
-  });
+    });
 
-  serverProcess.stderr.on('data', (data) => {
-    const errorMessage = `Server Error: ${data}`;
-    if (controlPanel) {
-      controlPanel.webContents.send('server:log', errorMessage);
-    }
-    console.error(errorMessage);
-    logError(errorMessage);
-  });
+    // Add error handlers
+    serverProcess.on('error', (error) => {
+      logError(`Server process error: ${error.message}`);
+      if (controlPanel) {
+        controlPanel.webContents.send('server:log', `Error: ${error.message}`);
+      }
+    });
 
-  serverProcess.on('error', (error) => {
-    const errorMessage = `Process Error: ${error.message}`;
-    if (controlPanel) {
-      controlPanel.webContents.send('server:log', errorMessage);
-    }
-    console.error(errorMessage);
-    logError(errorMessage);
-  });
+    serverProcess.stdout.on('data', (data) => {
+      const logMessage = `Server: ${data}`;
+      if (controlPanel) {
+        controlPanel.webContents.send('server:log', logMessage);
+      }
+      console.log(logMessage);
+      
+      if (data.includes('Server is running')) {
+        serverRunning = true;
+        saveServerState(true);
+        if (controlPanel) {
+          controlPanel.webContents.send('server:started');
+        }
+      }
+    });
 
-  serverProcess.on('close', (code) => {
-    const message = `Server process exited with code ${code}`;
-    serverRunning = false;
-    if (controlPanel) {
-      controlPanel.webContents.send('server:stopped');
-      controlPanel.webContents.send('server:log', message);
-    }
-    if (code !== 0) {
-      logError(message);
-    }
-  });
+    serverProcess.stderr.on('data', (data) => {
+      const errorMessage = `Server Error: ${data}`;
+      if (controlPanel) {
+        controlPanel.webContents.send('server:log', errorMessage);
+      }
+      console.error(errorMessage);
+      logError(errorMessage);
+    });
+
+    serverProcess.on('close', (code) => {
+      const message = `Server process exited with code ${code}`;
+      serverRunning = false;
+      if (controlPanel) {
+        controlPanel.webContents.send('server:stopped');
+        controlPanel.webContents.send('server:log', message);
+      }
+      if (code !== 0) {
+        logError(message);
+      }
+    });
+  } catch (err) {
+    logError(`Failed to start server: ${err}`);
+  }
 }
 
 function stopServer() {
@@ -355,6 +423,11 @@ function listDir(dir) {
 
 // Start automatic update checking
 function startAutoUpdateCheck() {
+  // Load environment variables if not already loaded
+  if (!process.env.GITHUB_TOKEN) {
+    loadEnvConfig();
+  }
+
   // Load previous update state
   const updateState = loadUpdateState();
   updatePostponeCount = updateState.postponeCount || 0;
@@ -446,13 +519,142 @@ function resetUpdateState() {
   });
 }
 
+// Add new function for system logs
+function saveSystemLogs(logs, type = 'error') {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const fileName = `${type}_log_${timestamp}.txt`;
+  const logPath = isDev 
+    ? path.join(__dirname, '..', 'logs', fileName)
+    : path.join(app.getPath('userData'), 'logs', fileName);
+
+  // Ensure logs directory exists
+  const logsDir = path.dirname(logPath);
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+  }
+
+  fs.writeFile(logPath, logs, (err) => {
+    if (err) {
+      console.error('Failed to save logs:', err);
+    } else {
+      console.log(`Logs saved to: ${logPath}`);
+      if (controlPanel) {
+        controlPanel.webContents.send('logs:saved', logPath);
+      }
+    }
+  });
+  return logPath;
+}
+
+// Add network connectivity check
+async function checkNetworkConnectivity() {
+  try {
+    // First check DNS resolution
+    await new Promise((resolve, reject) => {
+      dns.lookup('google.com', (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+    // Then check ping
+    const res = await ping.promise.probe('8.8.8.8', {
+      timeout: 2,
+      min_reply: 1
+    });
+
+    return {
+      connected: res.alive,
+      latency: res.time
+    };
+  } catch (err) {
+    console.error('Network check error:', err);
+    return {
+      connected: false,
+      latency: null
+    };
+  }
+}
+
+// Add this function to open logs folder
+function openLogsFolder() {
+  const logsPath = isDev 
+    ? path.join(__dirname, '..', 'logs')
+    : path.join(app.getPath('userData'), 'logs');
+
+  if (!fs.existsSync(logsPath)) {
+    fs.mkdirSync(logsPath, { recursive: true });
+  }
+
+  require('electron').shell.openPath(logsPath);
+}
+
+// Add these IPC handlers
+ipcMain.on('save:systemLogs', (event, logs) => {
+  const logPath = saveSystemLogs(logs, 'system');
+  event.reply('logs:saved', logPath);
+});
+
+ipcMain.on('open:logs', () => {
+  openLogsFolder();
+});
+
+ipcMain.on('check:network', async () => {
+  const status = await checkNetworkConnectivity();
+  if (controlPanel) {
+    controlPanel.webContents.send('network:status', status);
+  }
+});
+
+function createNodeCheckWindow() {
+    nodeCheckWindow = new BrowserWindow({
+        width: 600,
+        height: 400,
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
+        },
+        title: 'System Requirements Check'
+    });
+
+    nodeCheckWindow.loadFile(path.join(__dirname, 'nodeCheck.html'));
+}
+
+// Add these IPC handlers
+ipcMain.on('check-node', () => {
+    const result = checkNodeInstallation();
+    nodeCheckWindow.webContents.send('node-check-result', result);
+});
+
+ipcMain.on('download-node', async () => {
+    try {
+        const installerPath = await downloadNodeInstaller();
+        nodeCheckWindow.webContents.send('download-complete', installerPath);
+    } catch (err) {
+        nodeCheckWindow.webContents.send('download-error', err.message);
+    }
+});
+
+ipcMain.on('run-installer', (event, installerPath) => {
+    require('child_process').exec(installerPath);
+});
+
+ipcMain.on('proceed-installation', () => {
+    nodeCheckWindow.close();
+    createControlPanel();
+});
+
 app.on('ready', () => {
-  createControlPanel();
-  startAutoUpdateCheck();
-  // Debug: List contents of important directories
-  const appPath = getAppPath();
-  listDir(appPath);
-  listDir(path.join(appPath, 'controller'));
+    createSplashScreen();
+    createControlPanel();
+    
+    // Initial network check
+    setTimeout(async () => {
+        const status = await checkNetworkConnectivity();
+        if (controlPanel) {
+            controlPanel.webContents.send('network:status', status);
+        }
+    }, 1000);
 });
 
 app.on('window-all-closed', () => {
@@ -471,16 +673,28 @@ app.on('activate', () => {
 
 // IPC handlers
 ipcMain.on('server:start', () => {
-  startServer();
+  try {
+    startServer();
+  } catch (err) {
+    logError(`Failed to handle server start: ${err}`);
+  }
 });
 
 ipcMain.on('server:stop', () => {
-  stopServer();
+  try {
+    stopServer();
+  } catch (err) {
+    logError(`Failed to handle server stop: ${err}`);
+  }
 });
 
 ipcMain.on('server:restart', () => {
-  stopServer();
-  setTimeout(() => startServer(), 1000);
+  try {
+    stopServer();
+    setTimeout(() => startServer(), 1000);
+  } catch (err) {
+    logError(`Failed to handle server restart: ${err}`);
+  }
 });
 
 ipcMain.on('open:browser', () => {
@@ -531,4 +745,182 @@ ipcMain.on('check:update', async () => {
     }
     logError(`Update check failed: ${err.message}`);
   }
+});
+
+// Add this function to check for Node.js installation
+function checkNodeInstallation() {
+  try {
+    const nodeVersion = require('child_process').execSync('node --version').toString().trim();
+    return { installed: true, version: nodeVersion };
+  } catch (err) {
+    return { installed: false, version: null };
+  }
+}
+
+// Add this function to handle Node.js download
+function downloadNodeInstaller() {
+  const nodeUrl = 'https://nodejs.org/dist/v20.11.0/node-v20.11.0-x64.msi';  // LTS version
+  return new Promise((resolve, reject) => {
+    const https = require('https');
+    const fs = require('fs');
+    const downloadPath = path.join(app.getPath('downloads'), 'node-installer.msi');
+    
+    const file = fs.createWriteStream(downloadPath);
+    https.get(nodeUrl, (response) => {
+      response.pipe(file);
+      file.on('finish', () => {
+        file.close();
+        resolve(downloadPath);
+      });
+    }).on('error', (err) => {
+      fs.unlink(downloadPath);
+      reject(err);
+    });
+  });
+}
+
+// Email configuration for problem reports
+function createEmailTransporter() {
+    // Load environment variables if not already loaded
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
+        loadEnvConfig();
+    }
+
+    // Double check if credentials are available
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_APP_PASSWORD) {
+        console.error('Email credentials missing after loading config');
+        return null;
+    }
+
+    return nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_APP_PASSWORD
+        }
+    });
+}
+
+// Handle problem report submission
+async function sendProblemReport(reportData) {
+    try {
+        const transporter = createEmailTransporter();
+        if (!transporter) {
+            throw new Error('Email configuration is missing. Please check your .env file.');
+        }
+
+        // Test the connection
+        await transporter.verify();
+        console.log('Email connection verified');
+
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const logFileName = `problem_report_${timestamp}.txt`;
+        const logPath = path.join(
+            isDev ? path.join(__dirname, '..', 'logs') : app.getPath('userData'),
+            'logs',
+            logFileName
+        );
+
+        // Ensure logs directory exists
+        const logsDir = path.dirname(logPath);
+        if (!fs.existsSync(logsDir)) {
+            fs.mkdirSync(logsDir, { recursive: true });
+        }
+
+        // Save the logs
+        const logContent = `
+Problem Report
+-------------
+Date: ${new Date().toLocaleString()}
+Category: ${reportData.category}
+Title: ${reportData.title}
+
+Description:
+${reportData.description}
+
+System Logs:
+${reportData.systemLogs}
+        `;
+
+        fs.writeFileSync(logPath, logContent);
+        console.log('Problem report log saved to:', logPath);
+
+        // Prepare email
+        const mailOptions = {
+            from: `"PMS Support" <${process.env.EMAIL_USER}>`,
+            to: 'kevsllanes@gmail.com',
+            subject: `[PMS Problem Report] ${reportData.title}`,
+            text: `
+A new problem has been reported in the PMS Backend Support application.
+
+Category: ${reportData.category}
+Title: ${reportData.title}
+
+Description:
+${reportData.description}
+
+System logs are attached to this email.
+            `,
+            attachments: [
+                {
+                    filename: logFileName,
+                    path: logPath
+                }
+            ]
+        };
+
+        // Add screenshots if any
+        if (reportData.images && reportData.images.length > 0) {
+            for (const image of reportData.images) {
+                const imgBuffer = Buffer.from(image.data.split(',')[1], 'base64');
+                mailOptions.attachments.push({
+                    filename: image.name,
+                    content: imgBuffer,
+                    encoding: 'base64'
+                });
+            }
+        }
+
+        // Send email
+        console.log('Attempting to send email...');
+        await transporter.sendMail(mailOptions);
+        console.log('Problem report email sent successfully');
+        return { success: true, message: 'Problem report sent successfully' };
+    } catch (error) {
+        console.error('Error sending problem report:', error);
+        logError(`Failed to send problem report: ${error.message}`);
+        
+        // Provide more specific error messages
+        let errorMessage = 'Failed to send report: ';
+        if (error.message.includes('Invalid login')) {
+            errorMessage += 'Invalid email credentials. Please check your .env file.';
+        } else if (error.message.includes('Missing credentials')) {
+            errorMessage += 'Email configuration is missing. Please check your .env file.';
+        } else if (error.message.includes('connect ETIMEDOUT')) {
+            errorMessage += 'Connection timed out. Please check your internet connection.';
+        } else {
+            errorMessage += error.message;
+        }
+        
+        return { 
+            success: false, 
+            message: errorMessage
+        };
+    }
+}
+
+// Add this IPC handler with the other handlers
+ipcMain.on('submit:report', async (event, reportData) => {
+    console.log('Received problem report submission');
+    try {
+        const result = await sendProblemReport(reportData);
+        if (result.success) {
+            event.reply('report:sent', result.message);
+        } else {
+            event.reply('report:error', result.message);
+        }
+    } catch (error) {
+        console.error('Error in submit:report handler:', error);
+        event.reply('report:error', `Error: ${error.message}`);
+    }
 }); 
