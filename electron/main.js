@@ -923,4 +923,85 @@ ipcMain.on('submit:report', async (event, reportData) => {
         console.error('Error in submit:report handler:', error);
         event.reply('report:error', `Error: ${error.message}`);
     }
+});
+
+// Add this function to download updates
+async function downloadUpdate(downloadUrl) {
+  return new Promise((resolve, reject) => {
+    const https = require('https');
+    const fs = require('fs');
+    const downloadPath = path.join(app.getPath('downloads'), 'j5pms-update.exe');
+    
+    const file = fs.createWriteStream(downloadPath);
+    let receivedBytes = 0;
+    let totalBytes = 0;
+
+    https.get(downloadUrl, (response) => {
+      if (response.statusCode !== 200) {
+        reject(new Error(`Failed to download update: ${response.statusMessage}`));
+        return;
+      }
+
+      totalBytes = parseInt(response.headers['content-length'], 10);
+      
+      response.on('data', (chunk) => {
+        receivedBytes += chunk.length;
+        if (controlPanel) {
+          const progress = (receivedBytes / totalBytes) * 100;
+          controlPanel.webContents.send('update:download-progress', progress);
+        }
+      });
+
+      response.pipe(file);
+
+      file.on('finish', () => {
+        file.close();
+        resolve(downloadPath);
+      });
+    }).on('error', (err) => {
+      fs.unlink(downloadPath, () => {});
+      reject(err);
+    });
+  });
+}
+
+// Add this function to install updates
+async function installUpdate(installerPath) {
+  try {
+    // Stop the server before installing update
+    stopServer();
+    
+    // Run the installer
+    require('child_process').exec(installerPath, (error) => {
+      if (error) {
+        logError(`Failed to run installer: ${error}`);
+        if (controlPanel) {
+          controlPanel.webContents.send('update:install-error', error.message);
+        }
+      } else {
+        // Quit the app to complete installation
+        app.quit();
+      }
+    });
+  } catch (error) {
+    logError(`Failed to install update: ${error}`);
+    throw error;
+  }
+}
+
+// Add these IPC handlers for updates
+ipcMain.on('update:download', async () => {
+  try {
+    if (!pendingUpdate || !pendingUpdate.downloadUrl) {
+      throw new Error('No update available to download');
+    }
+
+    const installerPath = await downloadUpdate(pendingUpdate.downloadUrl);
+    await installUpdate(installerPath);
+  } catch (error) {
+    logError(`Update process failed: ${error}`);
+    if (controlPanel) {
+      controlPanel.webContents.send('update:download-error', error.message);
+    }
+  }
 }); 

@@ -350,6 +350,57 @@
         .submit-report:hover {
             background-color: #D81B60;
         }
+
+        /* Add these styles to your existing styles */
+        .progress-bar-container {
+            width: 100%;
+            height: 20px;
+            background-color: #f5f5f5;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: #2196F3;
+            transition: width 0.3s ease;
+        }
+
+        .primary-btn {
+            background-color: #2196F3;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .secondary-btn {
+            background-color: #9e9e9e;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .error-message {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        /* Add hover effects */
+        .primary-btn:hover {
+            background-color: #1976D2;
+        }
+
+        .secondary-btn:hover {
+            background-color: #757575;
+        }
     </style>
 </head>
 <body>
@@ -408,7 +459,7 @@
             </div>
         </div>
     </div>
-
+    
     <!-- Instructions Modal -->
     <div id="instructionsModal" class="modal">
         <div class="modal-content">
@@ -558,6 +609,41 @@
                         <i class="fas fa-paper-plane"></i> Submit Report
                     </button>
                 </form>
+            </div>
+    </div>
+    </div>
+
+    <!-- Update Modal -->
+    <div id="updateModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="modal-header">
+                <h2 class="modal-title">Software Update</h2>
+            </div>
+            <div class="modal-body">
+                <div id="updateInfo">
+                    <h3 id="updateTitle"></h3>
+                    <p id="updateDescription"></p>
+                    <div id="updateDetails">
+                        <p><strong>Release Date:</strong> <span id="releaseDate"></span></p>
+                        <p><strong>Version:</strong> <span id="updateVersion"></span></p>
+                        <div id="releaseNotes" style="margin-top: 15px;">
+                            <h4>Release Notes:</h4>
+                            <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px;"></pre>
+                        </div>
+                    </div>
+                </div>
+                <div id="updateProgress" style="display: none;">
+                    <div class="progress-bar-container" style="margin: 20px 0;">
+                        <div class="progress-bar" style="width: 0%"></div>
+                    </div>
+                    <p id="progressText" style="text-align: center;">Downloading: 0%</p>
+                </div>
+                <div id="updateError" class="error-message" style="display: none;"></div>
+            </div>
+            <div class="modal-footer" style="margin-top: 20px; text-align: right;">
+                <button id="postponeUpdate" class="secondary-btn">Postpone</button>
+                <button id="downloadUpdate" class="primary-btn">Download & Install</button>
             </div>
         </div>
     </div>
@@ -856,6 +942,85 @@
                 submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Report';
                 submitBtn.style.backgroundColor = '#E91E63';
             }, 3000);
+        });
+
+        // Add update modal handling
+        const updateModal = document.getElementById('updateModal');
+        const updateTitle = document.getElementById('updateTitle');
+        const updateDescription = document.getElementById('updateDescription');
+        const releaseDate = document.getElementById('releaseDate');
+        const updateVersion = document.getElementById('updateVersion');
+        const releaseNotes = document.getElementById('releaseNotes').querySelector('pre');
+        const updateProgress = document.getElementById('updateProgress');
+        const progressBar = document.querySelector('.progress-bar');
+        const progressText = document.getElementById('progressText');
+        const updateError = document.getElementById('updateError');
+        const postponeUpdate = document.getElementById('postponeUpdate');
+        const downloadUpdate = document.getElementById('downloadUpdate');
+
+        // Handle update available
+        ipcRenderer.on('update:available', (event, updateInfo) => {
+            updateTitle.textContent = updateInfo.releaseName;
+            updateDescription.textContent = 'A new version of J5 Pharmacy Management System is available.';
+            releaseDate.textContent = updateInfo.releaseDate;
+            updateVersion.textContent = `v${updateInfo.latestVersion}`;
+            releaseNotes.textContent = updateInfo.releaseNotes;
+            updateModal.style.display = 'block';
+            updateProgress.style.display = 'none';
+            updateError.style.display = 'none';
+        });
+
+        // Handle critical updates
+        ipcRenderer.on('update:critical', (event, updateInfo) => {
+            updateTitle.textContent = 'Critical Update Required';
+            updateDescription.textContent = updateInfo.reason;
+            releaseDate.textContent = updateInfo.releaseDate;
+            updateVersion.textContent = `v${updateInfo.latestVersion}`;
+            releaseNotes.textContent = updateInfo.releaseNotes;
+            updateModal.style.display = 'block';
+            postponeUpdate.style.display = 'none';
+            updateProgress.style.display = 'none';
+            updateError.style.display = 'none';
+        });
+
+        // Handle download progress
+        ipcRenderer.on('update:download-progress', (event, progress) => {
+            updateProgress.style.display = 'block';
+            progressBar.style.width = `${progress}%`;
+            progressText.textContent = `Downloading: ${Math.round(progress)}%`;
+            downloadUpdate.disabled = true;
+            postponeUpdate.disabled = true;
+        });
+
+        // Handle download error
+        ipcRenderer.on('update:download-error', (event, error) => {
+            updateError.textContent = `Download failed: ${error}`;
+            updateError.style.display = 'block';
+            updateProgress.style.display = 'none';
+            downloadUpdate.disabled = false;
+            postponeUpdate.disabled = false;
+        });
+
+        // Handle install error
+        ipcRenderer.on('update:install-error', (event, error) => {
+            updateError.textContent = `Installation failed: ${error}`;
+            updateError.style.display = 'block';
+            updateProgress.style.display = 'none';
+            downloadUpdate.disabled = false;
+            postponeUpdate.disabled = false;
+        });
+
+        // Handle download button click
+        downloadUpdate.addEventListener('click', () => {
+            ipcRenderer.send('update:download');
+            downloadUpdate.disabled = true;
+            postponeUpdate.disabled = true;
+        });
+
+        // Handle postpone button click
+        postponeUpdate.addEventListener('click', () => {
+            ipcRenderer.send('update:postpone');
+            updateModal.style.display = 'none';
         });
     </script>
 </body>
