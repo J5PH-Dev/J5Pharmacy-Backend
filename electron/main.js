@@ -1013,23 +1013,28 @@ async function downloadUpdate(downloadUrl) {
       controlPanel.webContents.send('server:log', logDownloadPath);
     }
 
+    // Delete existing file if it exists
+    if (fs.existsSync(downloadPath)) {
+      try {
+        fs.unlinkSync(downloadPath);
+        console.log('Deleted existing installer file');
+      } catch (err) {
+        console.error('Failed to delete existing installer:', err);
+      }
+    }
+
     const file = fs.createWriteStream(downloadPath);
     let receivedBytes = 0;
     let totalBytes = 0;
 
-    // Parse the URL to modify it for the API
-    const urlParts = downloadUrl.split('/');
-    const apiUrl = {
-      hostname: 'api.github.com',
-      path: `/repos/${urlParts[3]}/${urlParts[4]}/releases/assets/${urlParts[urlParts.length - 1]}`,
+    // Use the direct download URL with authentication
+    const request = https.get(downloadUrl, {
       headers: {
-        'User-Agent': 'J5-PMS-Updater',
+        'User-Agent': 'J5PH-Dev/J5Pharmacy-Backend',
         'Accept': 'application/octet-stream',
         'Authorization': `token ${process.env.GITHUB_TOKEN}`
       }
-    };
-
-    const request = https.get(apiUrl, (response) => {
+    }, (response) => {
       const statusLog = `[${new Date().toLocaleTimeString()}] Download response status: ${response.statusCode} ${response.statusMessage}`;
       console.log(statusLog);
       if (controlPanel) {
@@ -1047,7 +1052,7 @@ async function downloadUpdate(downloadUrl) {
         // Follow the redirect with the token
         const redirectRequest = https.get(redirectUrl, {
           headers: {
-            'User-Agent': 'J5-PMS-Updater',
+            'User-Agent': 'J5PH-Dev/J5Pharmacy-Backend',
             'Accept': 'application/octet-stream',
             'Authorization': `token ${process.env.GITHUB_TOKEN}`
           }
