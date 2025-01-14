@@ -1,8 +1,6 @@
 # Dependencies
 node_modules/
 
-# Build output
-dist/
 build/
 
 # Environment variables
@@ -34,3 +32,8 @@ pids
 .Trashes
 ehthumbs.db
 Thumbs.db
+dist/builder-debug.yml
+dist/builder-effective-config.yaml
+dist/latest.yml
+/dist/win-unpacked
+dist/J5 Pharmacy Management System-Setup.exe.blockmap
