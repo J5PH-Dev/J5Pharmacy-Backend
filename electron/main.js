@@ -316,6 +316,13 @@ function createControlPanel() {
       logError(`Window failed to load: ${errorDescription} (${errorCode})`);
     });
 
+    controlPanel.on('close', (e) => {
+      if (serverRunning) {
+        e.preventDefault();
+        controlPanel.webContents.send('confirm:exit');
+      }
+    });
+
     controlPanel.on('closed', () => {
       stopServer();
       if (browserWindow) {
@@ -1138,3 +1145,11 @@ async function installUpdate(installerPath) {
     throw error;
   }
 } 
+
+// Add this with other IPC handlers
+ipcMain.on('app:quit', () => {
+  if (controlPanel) {
+    controlPanel.destroy(); // This bypasses the close event
+  }
+  app.quit();
+}); 

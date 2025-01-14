@@ -26,14 +26,15 @@
   
   ; Create start menu shortcut with correct icon
   CreateDirectory "$SMPROGRAMS\${PRODUCT_NAME}"
-  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\${PRODUCT_NAME}.lnk" "$INSTDIR\${PRODUCT_FILENAME}.exe" "" "$INSTDIR\resources\app\electron\icons\icon.ico"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\${PRODUCT_NAME}.lnk" "$INSTDIR\${PRODUCT_FILENAME}.exe" "" "$INSTDIR\resources\app\electron\icons\icon.ico" 0
   
   ; Write registry keys for proper icon and application paths
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\${PRODUCT_FILENAME}.exe" "" "$INSTDIR\${PRODUCT_FILENAME}.exe"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\${PRODUCT_FILENAME}.exe" "Path" "$INSTDIR"
-  
-  ; Set default icon for the application
   WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_FILENAME}.exe\DefaultIcon" "" "$INSTDIR\resources\app\electron\icons\icon.ico"
+  
+  ; Set application icon in registry
+  WriteRegStr HKLM "Software\Classes\${PRODUCT_NAME}\DefaultIcon" "" "$INSTDIR\resources\app\electron\icons\icon.ico"
 !macroend
 
 !macro customUnInstall

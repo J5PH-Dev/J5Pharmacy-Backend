@@ -78,13 +78,13 @@
         }
 
         .datetime {
-            font-size: 16px;
+            font-size: 18px;
             color: var(--text-color);
         }
 
         .date {
             font-weight: bold;
-            font-size: 18px;
+            font-size: 22px;
         }
 
         .time {
@@ -887,6 +887,116 @@
         .close:hover {
             opacity: 1;
         }
+
+        /* Update the form-group styles */
+        .form-group {
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .form-group select,
+        .form-group input[type="text"],
+        .form-group textarea {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px;
+            border: 1px solid var(--input-border, #ddd);
+            border-radius: 6px;
+            font-size: 14px;
+            background-color: var(--input-bg, white);
+            color: var(--input-text, black);
+            transition: border-color 0.3s, background-color 0.3s, color 0.3s;
+        }
+
+        /* Add styles for file upload containers */
+        .file-upload-container {
+            background: var(--input-bg, #f5f5f5);
+            border: 2px dashed var(--input-border, #ddd);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .file-upload-container input[type="file"] {
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            display: block;
+        }
+
+        /* Style for file input wrapper */
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            font-size: 14px;
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            height: 100%;
+            opacity: 1;
+        }
+
+        /* Preview styles */
+        .file-preview {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+            font-size: 14px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .image-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .image-preview img {
+            max-width: 150px;
+            height: auto;
+            border-radius: 4px;
+            object-fit: cover;
+        }
+
+        /* Update textarea styles */
+        #problemDescription {
+            min-height: 120px;
+            resize: vertical;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Update modal content styles */
+        .modal-content {
+            width: 90%;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .modal-body {
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* Update report form styles */
+        .report-form {
+            width: 100%;
+            box-sizing: border-box;
+        }
 </style>
 </head>
 <body>
@@ -953,7 +1063,7 @@
 
             <div class="logo-container">
                 <img src="icons/icon_solid.png" alt="J5 Pharmacy Logo">
-                <div class="logo-text">J5 - Backend Support</div>
+                <div class="logo-text">J5Pharmacy - Backend Support</div>
             </div>
         </div>
     </div>
@@ -1277,6 +1387,7 @@
         const serverStatus = document.getElementById('serverStatus');
         const networkStatus = document.getElementById('networkStatus');
         const updateStatus = document.getElementById('updateStatus');
+        const startServerBtn = document.getElementById('startServer');
         const stopServerBtn = document.getElementById('stopServer');
         const restartServerBtn = document.getElementById('restartServer');
         const openBrowserBtn = document.getElementById('openBrowser');
@@ -1350,22 +1461,26 @@
         });
 
         // IPC handlers
+        // Update the server:started handler
         ipcRenderer.on('server:started', () => {
             serverStatus.textContent = 'Server is running';
             serverStatus.style.color = '#4CAF50';
             appendLog('Server started successfully');
-            // Enable stop, restart, and browser buttons
+            // Enable stop, restart, and browser buttons, disable start button
+            startServerBtn.disabled = true;
             stopServerBtn.disabled = false;
             restartServerBtn.disabled = false;
             openBrowserBtn.disabled = false;
             serverRunning = true;
         });
 
+        // Update the server:stopped handler
         ipcRenderer.on('server:stopped', () => {
             serverStatus.textContent = 'Server is stopped';
             serverStatus.style.color = '#f44336';
             appendLog('Server stopped');
-            // Disable stop, restart, and browser buttons
+            // Enable start button, disable others
+            startServerBtn.disabled = false;
             stopServerBtn.disabled = true;
             restartServerBtn.disabled = true;
             openBrowserBtn.disabled = true;
@@ -1391,10 +1506,6 @@
         ipcRenderer.on('update:status', (event, message) => {
             updateStatus.textContent = message;
             appendLog(message);
-        });
-
-        ipcRenderer.on('logs:saved', (event, path) => {
-            appendLog(`Logs saved to: ${path}`);
         });
 
         // Initial log and checks
@@ -1450,6 +1561,29 @@
             }
         }
 
+        // Add exit confirmation handler
+        ipcRenderer.on('confirm:exit', () => {
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.style.display = 'block';
+            modal.innerHTML = `
+                <div class="modal-content" style="width: 400px;">
+                    <div class="modal-header">
+                        <h2 class="modal-title">Confirm Exit</h2>
+                    </div>
+                    <div class="modal-body">
+                        <p>The server is still running. Are you sure you want to exit?</p>
+                        <p>This will stop the server and close all connections.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="secondary-btn" onclick="this.closest('.modal').remove()">Cancel</button>
+                        <button class="primary-btn" onclick="ipcRenderer.send('app:quit')" style="background-color: #f44336;">Exit</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        });
+
         // Report Problem functionality
         const reportModal = document.getElementById('reportModal');
         const reportBtn = document.getElementById('reportProblem');
@@ -1478,48 +1612,6 @@
                 };
                 reader.readAsDataURL(file);
             });
-        });
-
-        reportForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            appendLog('Submitting problem report...');
-
-            // Disable submit button and show loading state
-            const submitBtn = reportForm.querySelector('.submit-report');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-
-            try {
-                // Process images first
-                const imagePromises = [...imageAttachment.files].map(file => {
-                    return new Promise((resolve) => {
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                            resolve({
-                                name: file.name,
-                                data: e.target.result
-                            });
-                        };
-                        reader.readAsDataURL(file);
-                    });
-                });
-
-                const processedImages = await Promise.all(imagePromises);
-
-                const formData = {
-                    category: document.getElementById('problemCategory').value,
-                    title: document.getElementById('problemTitle').value,
-                    description: document.getElementById('problemDescription').value,
-                    systemLogs: log.textContent,
-                    images: processedImages
-                };
-
-                ipcRenderer.send('submit:report', formData);
-            } catch (error) {
-                appendLog(`Error processing form data: ${error.message}`);
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Report';
-            }
         });
 
         // Add handlers for report submission response
