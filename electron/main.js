@@ -1017,13 +1017,19 @@ async function downloadUpdate(downloadUrl) {
     let receivedBytes = 0;
     let totalBytes = 0;
 
-    const request = https.get(downloadUrl, {
+    // Parse the URL to modify it for the API
+    const urlParts = downloadUrl.split('/');
+    const apiUrl = {
+      hostname: 'api.github.com',
+      path: `/repos/${urlParts[3]}/${urlParts[4]}/releases/assets/${urlParts[urlParts.length - 1]}`,
       headers: {
         'User-Agent': 'J5-PMS-Updater',
         'Accept': 'application/octet-stream',
         'Authorization': `token ${process.env.GITHUB_TOKEN}`
       }
-    }, (response) => {
+    };
+
+    const request = https.get(apiUrl, (response) => {
       const statusLog = `[${new Date().toLocaleTimeString()}] Download response status: ${response.statusCode} ${response.statusMessage}`;
       console.log(statusLog);
       if (controlPanel) {
@@ -1031,18 +1037,32 @@ async function downloadUpdate(downloadUrl) {
       }
 
       if (response.statusCode === 302 || response.statusCode === 301) {
-        const redirectLog = `[${new Date().toLocaleTimeString()}] Redirecting to: ${response.headers.location}`;
+        const redirectUrl = response.headers.location;
+        const redirectLog = `[${new Date().toLocaleTimeString()}] Redirecting to: ${redirectUrl}`;
         console.log(redirectLog);
         if (controlPanel) {
           controlPanel.webContents.send('server:log', redirectLog);
         }
-        // Handle redirect
-        const redirectRequest = https.get(response.headers.location, handleResponse);
+
+        // Follow the redirect with the token
+        const redirectRequest = https.get(redirectUrl, {
+          headers: {
+            'User-Agent': 'J5-PMS-Updater',
+            'Accept': 'application/octet-stream',
+            'Authorization': `token ${process.env.GITHUB_TOKEN}`
+          }
+        }, (redirectResponse) => {
+          handleResponse(redirectResponse);
+        });
         redirectRequest.on('error', handleError);
         redirectRequest.end();
         return;
       }
 
+      handleResponse(response);
+    });
+
+    function handleResponse(response) {
       if (response.statusCode !== 200) {
         const errorMessage = `Failed to download update: ${response.statusMessage} (${response.statusCode})`;
         const errorLog = `[${new Date().toLocaleTimeString()}] ${errorMessage}`;
@@ -1066,7 +1086,7 @@ async function downloadUpdate(downloadUrl) {
         if (controlPanel) {
           const progress = (receivedBytes / totalBytes) * 100;
           controlPanel.webContents.send('update:download-progress', progress);
-          if (progress % 20 === 0) { // Log every 20% progress
+          if (progress % 20 === 0) {
             const progressLog = `[${new Date().toLocaleTimeString()}] Download progress: ${Math.round(progress)}%`;
             controlPanel.webContents.send('server:log', progressLog);
           }
@@ -1084,7 +1104,7 @@ async function downloadUpdate(downloadUrl) {
         file.close();
         resolve(downloadPath);
       });
-    });
+    }
 
     const handleError = (err) => {
       const errorLog = `[${new Date().toLocaleTimeString()}] Download request error: ${err.message}`;
