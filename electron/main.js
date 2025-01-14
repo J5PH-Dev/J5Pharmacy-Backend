@@ -1005,7 +1005,7 @@ async function downloadUpdate(downloadUrl) {
   return new Promise((resolve, reject) => {
     const https = require('https');
     const fs = require('fs');
-    const downloadPath = path.join(app.getPath('downloads'), 'j5pms-update.exe');
+    const downloadPath = path.join(app.getPath('downloads'), 'J5PMS-setup.exe');
     
     const logDownloadPath = `[${new Date().toLocaleTimeString()}] Download path: ${downloadPath}`;
     console.log(logDownloadPath);
