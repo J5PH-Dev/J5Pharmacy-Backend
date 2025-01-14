@@ -8,6 +8,7 @@ const dotenv = require('dotenv');
 const dns = require('dns');
 const ping = require('ping');
 const nodemailer = require('nodemailer');
+require('@electron/remote/main').initialize();
 dotenv.config(); // Load environment variables
 
 // Set the app user model ID for Windows
@@ -86,19 +87,12 @@ function getAppPath() {
 // Update checking
 function checkForUpdates() {
   return new Promise((resolve, reject) => {
-    const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-    
-    // Load environment variables if not already loaded
-    if (!process.env.GITHUB_TOKEN) {
-      loadEnvConfig();
-    }
     
     const options = {
       hostname: 'api.github.com',
       path: '/repos/J5PH-Dev/J5Pharmacy-Backend/releases/latest',
       headers: {
-        'User-Agent': 'J5-PMS-Updater',
-        'Authorization': `token ${process.env.GITHUB_TOKEN}`,
+        'User-Agent': 'J5PH-Dev/J5Pharmacy-Backend',
         'Accept': 'application/vnd.github.v3+json'
       }
     };
@@ -334,6 +328,8 @@ function createControlPanel() {
     if (loadServerState()) {
       startServer();
     }
+
+    require('@electron/remote/main').enable(controlPanel.webContents);
   } catch (err) {
     logError(`Failed to create control panel: ${err}`);
   }
@@ -996,174 +992,96 @@ ipcMain.on('submit:report', async (event, reportData) => {
 
 // Add this function to download updates
 async function downloadUpdate(downloadUrl) {
-  const logMessage = `[${new Date().toLocaleTimeString()}] Starting download from URL: ${downloadUrl}`;
-  console.log(logMessage);
-  if (controlPanel) {
-    controlPanel.webContents.send('server:log', logMessage);
+  const downloadPath = path.join(app.getPath('downloads'), 'J5PMS-setup.exe');
+  console.log(`Starting download from URL: ${downloadUrl}`);
+  console.log(`Download path: ${downloadPath}`);
+
+  // Delete existing file if it exists
+  if (fs.existsSync(downloadPath)) {
+    try {
+      fs.unlinkSync(downloadPath);
+      console.log('Deleted existing installer file');
+    } catch (err) {
+      console.error('Failed to delete existing installer:', err);
+    }
   }
 
   return new Promise((resolve, reject) => {
-    const https = require('https');
-    const fs = require('fs');
-    const downloadPath = path.join(app.getPath('downloads'), 'J5PMS-setup.exe');
-    
-    const logDownloadPath = `[${new Date().toLocaleTimeString()}] Download path: ${downloadPath}`;
-    console.log(logDownloadPath);
-    if (controlPanel) {
-      controlPanel.webContents.send('server:log', logDownloadPath);
-    }
-
-    // Delete existing file if it exists
-    if (fs.existsSync(downloadPath)) {
-      try {
-        fs.unlinkSync(downloadPath);
-        console.log('Deleted existing installer file');
-      } catch (err) {
-        console.error('Failed to delete existing installer:', err);
-      }
-    }
-
     const file = fs.createWriteStream(downloadPath);
     let receivedBytes = 0;
-    let totalBytes = 0;
 
-    // Parse URL to get the API URL for the release asset
-    const urlParts = downloadUrl.split('/');
-    const owner = urlParts[3];
-    const repo = urlParts[4];
-    const tag = urlParts[6];
-
-    // First, get the release information to get the asset ID
-    const releaseOptions = {
-      hostname: 'api.github.com',
-      path: `/repos/${owner}/${repo}/releases/tags/${tag}`,
-      headers: {
-        'User-Agent': 'J5PH-Dev/J5Pharmacy-Backend',
-        'Accept': 'application/vnd.github.v3+json',
-        'Authorization': `token ${process.env.GITHUB_TOKEN}`
-      }
+    const handleError = (err) => {
+      console.error('Download error:', err);
+      fs.unlink(downloadPath, () => {});
+      reject(err);
     };
 
-    https.get(releaseOptions, (releaseResponse) => {
-      let releaseData = '';
-      releaseResponse.on('data', chunk => { releaseData += chunk; });
-      releaseResponse.on('end', () => {
-        try {
-          const release = JSON.parse(releaseData);
-          const asset = release.assets.find(a => a.name === 'J5PMS-setup.exe');
-          
-          if (!asset) {
-            throw new Error('Installer asset not found in release');
+    // Direct download from the browser_download_url
+    const request = https.get(downloadUrl, {
+      headers: {
+        'User-Agent': 'J5PH-Dev/J5Pharmacy-Backend',
+        'Accept': '*/*'  // Accept any content type
+      }
+    }, (response) => {
+      if (response.statusCode === 302 || response.statusCode === 301) {
+        // Handle redirect
+        const redirectUrl = response.headers.location;
+        console.log('Redirecting to:', redirectUrl);
+        
+        // Follow redirect
+        https.get(redirectUrl, {
+          headers: {
+            'User-Agent': 'J5PH-Dev/J5Pharmacy-Backend',
+            'Accept': '*/*'
           }
-
-          // Now download the asset using the asset URL
-          const request = https.get({
-            hostname: 'api.github.com',
-            path: `/repos/${owner}/${repo}/releases/assets/${asset.id}`,
-            headers: {
-              'User-Agent': 'J5PH-Dev/J5Pharmacy-Backend',
-              'Accept': 'application/octet-stream',
-              'Authorization': `token ${process.env.GITHUB_TOKEN}`
-            }
-          }, (response) => {
-            const statusLog = `[${new Date().toLocaleTimeString()}] Download response status: ${response.statusCode} ${response.statusMessage}`;
-            console.log(statusLog);
+        }, (redirectResponse) => {
+          const totalBytes = parseInt(redirectResponse.headers['content-length'], 10);
+          
+          redirectResponse.on('data', (chunk) => {
+            receivedBytes += chunk.length;
             if (controlPanel) {
-              controlPanel.webContents.send('server:log', statusLog);
+              const progress = (receivedBytes / totalBytes) * 100;
+              controlPanel.webContents.send('update:download-progress', progress);
             }
-
-            if (response.statusCode === 302 || response.statusCode === 301) {
-              const redirectUrl = response.headers.location;
-              const redirectLog = `[${new Date().toLocaleTimeString()}] Redirecting to: ${redirectUrl}`;
-              console.log(redirectLog);
-              if (controlPanel) {
-                controlPanel.webContents.send('server:log', redirectLog);
-              }
-
-              // Follow the redirect with the token
-              const redirectRequest = https.get(redirectUrl, {
-                headers: {
-                  'User-Agent': 'J5PH-Dev/J5Pharmacy-Backend',
-                  'Authorization': `token ${process.env.GITHUB_TOKEN}`
-                }
-              }, (redirectResponse) => {
-                handleResponse(redirectResponse);
-              });
-              redirectRequest.on('error', handleError);
-              redirectRequest.end();
-              return;
-            }
-
-            handleResponse(response);
           });
 
-          request.on('error', handleError);
-          request.end();
+          redirectResponse.pipe(file);
 
-        } catch (error) {
-          const errorLog = `[${new Date().toLocaleTimeString()}] Failed to process release data: ${error.message}`;
-          console.error(errorLog);
-          if (controlPanel) {
-            controlPanel.webContents.send('server:log', errorLog);
-          }
-          reject(error);
-        }
-      });
-    }).on('error', handleError);
-
-    function handleResponse(response) {
-      if (response.statusCode !== 200) {
-        const errorMessage = `Failed to download update: ${response.statusMessage} (${response.statusCode})`;
-        const errorLog = `[${new Date().toLocaleTimeString()}] ${errorMessage}`;
-        console.error(errorLog);
-        if (controlPanel) {
-          controlPanel.webContents.send('server:log', errorLog);
-        }
-        reject(new Error(errorMessage));
+          file.on('finish', () => {
+            file.close();
+            console.log('Download completed successfully');
+            resolve(downloadPath);
+          });
+        }).on('error', handleError);
+        
         return;
       }
 
-      totalBytes = parseInt(response.headers['content-length'], 10);
-      const bytesLog = `[${new Date().toLocaleTimeString()}] Total bytes to download: ${totalBytes}`;
-      console.log(bytesLog);
-      if (controlPanel) {
-        controlPanel.webContents.send('server:log', bytesLog);
+      if (response.statusCode !== 200) {
+        return reject(new Error(`Failed to download update: ${response.statusMessage} (${response.statusCode})`));
       }
+
+      const totalBytes = parseInt(response.headers['content-length'], 10);
       
       response.on('data', (chunk) => {
         receivedBytes += chunk.length;
         if (controlPanel) {
           const progress = (receivedBytes / totalBytes) * 100;
           controlPanel.webContents.send('update:download-progress', progress);
-          if (progress % 20 === 0) {
-            const progressLog = `[${new Date().toLocaleTimeString()}] Download progress: ${Math.round(progress)}%`;
-            controlPanel.webContents.send('server:log', progressLog);
-          }
         }
       });
 
       response.pipe(file);
 
       file.on('finish', () => {
-        const completeLog = `[${new Date().toLocaleTimeString()}] Download completed successfully`;
-        console.log(completeLog);
-        if (controlPanel) {
-          controlPanel.webContents.send('server:log', completeLog);
-        }
         file.close();
+        console.log('Download completed successfully');
         resolve(downloadPath);
       });
-    }
+    });
 
-    const handleError = (err) => {
-      const errorLog = `[${new Date().toLocaleTimeString()}] Download request error: ${err.message}`;
-      console.error(errorLog);
-      if (controlPanel) {
-        controlPanel.webContents.send('server:log', errorLog);
-      }
-      fs.unlink(downloadPath, () => {});
-      reject(err);
-    };
+    request.on('error', handleError);
+    request.end();
   });
 }
 

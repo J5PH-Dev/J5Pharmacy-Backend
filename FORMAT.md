@@ -1,5 +1,9 @@
 In updating the app, we will use the following format for the changelog:
 
+npm version patch  # for bug fixes (1.0.2 -> 1.0.3)
+npm version minor  # for new features (1.0.2 -> 1.1.0)
+npm version major  # for breaking changes (1.0.2 -> 2.0.0)
+
 Current Version: 1.0.9
 
 # Version Numbering (Semantic Versioning):
