@@ -121,11 +121,21 @@ function checkForUpdates() {
           const currentVersion = app.getVersion();
           const latestVersion = release.tag_name.replace('v', '');
           
+          // Find the Windows installer asset
+          const windowsAsset = release.assets.find(asset => 
+            asset.name.toLowerCase().includes('setup.exe') || 
+            asset.name.toLowerCase().endsWith('.exe')
+          );
+
+          if (!windowsAsset && release.assets.length > 0) {
+            console.log('Available assets:', release.assets.map(a => a.name));
+          }
+
           resolve({
             hasUpdate: currentVersion < latestVersion,
             currentVersion,
             latestVersion,
-            downloadUrl: release.assets[0]?.browser_download_url,
+            downloadUrl: windowsAsset ? windowsAsset.browser_download_url : null,
             releaseNotes: release.body || 'No release notes available',
             releaseName: release.name || `Version ${latestVersion}`,
             releaseDate: new Date(release.published_at).toLocaleDateString()
