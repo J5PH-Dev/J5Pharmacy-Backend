@@ -6,15 +6,27 @@
         body {
             margin: 0;
             padding: 0;
+            background: linear-gradient(334deg,#213a57,#086477,#0ad1c8,#80ed99);
+            background-size: 240% 240%;
+            animation: gradient-animation 12s ease infinite;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            font-family: Arial, sans-serif;
-            color: white;
-            user-select: none;
+            overflow: hidden;
+        }
+        .container {
+            text-align: center;
+            animation: fadeIn 1s ease-in;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            position: relative;
+            padding: 20px;
         }
         .logo {
             width: 150px;
@@ -24,28 +36,61 @@
         }
         .title {
             font-size: 24px;
-            font-weight: bold;
             margin-bottom: 10px;
-            text-align: center;
+            opacity: 0;
+            animation: slideIn 0.5s ease-out forwards;
+            animation-delay: 0.5s;
         }
         .version {
             font-size: 14px;
-            opacity: 0.8;
+            color: #00ff9d;
+            opacity: 0;
+            animation: slideIn 0.5s ease-out forwards;
+            animation-delay: 0.7s;
             margin-bottom: 20px;
         }
         .loading {
             width: 200px;
             height: 4px;
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 2px;
             overflow: hidden;
+            opacity: 0;
+            animation: slideIn 0.5s ease-out forwards;
+            animation-delay: 0.9s;
+            margin: 20px 0;
         }
         .loading-bar {
             width: 0%;
             height: 100%;
-            background: white;
+            background: linear-gradient(90deg, #00ff9d, #00ccff);
             border-radius: 2px;
             animation: loading 2s ease-in-out infinite;
+        }
+        .credits {
+            position: absolute;
+            bottom: -40px;
+            width: 100%;
+            text-align: center;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.9);
+            opacity: 0;
+            animation: slideIn 0.5s ease-out forwards;
+            animation-delay: 1.1s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         @keyframes pulse {
             0% { transform: scale(1); }
@@ -57,21 +102,31 @@
             50% { width: 100%; }
             100% { width: 0%; }
         }
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
     </style>
 </head>
 <body>
-    <img src="icons/icon.ico" alt="Logo" class="logo">
-    <div class="title">J5 Pharmacy Management System</div>
-    <div class="version">Version <span id="version"></span></div>
-    <div class="loading">
-        <div class="loading-bar"></div>
+    <div class="container">
+        <img src="icons/icon.ico" alt="Logo" class="logo">
+        <div class="title">J5 Pharmacy Management System</div>
+        <div class="version">Version <span id="version">1.0.8</span></div>
+        <div class="loading">
+            <div class="loading-bar"></div>
+        </div>
+        <div class="credits">© 2025 | Zen Garden</div>
     </div>
-    <p><strong>&copy; 2025 Zen Garden</strong></p>
     <script>
         // Get version from electron
-        const { remote } = require('electron');
-        const app = remote ? remote.app : require('@electron/remote').app;
-        document.getElementById('version').textContent = app.getVersion();
+        try {
+            const { app } = require('@electron/remote');
+            document.getElementById('version').textContent = app.getVersion();
+        } catch (error) {
+            console.error('Error getting version:', error);
+        }
     </script>
 </body>
 </html> 

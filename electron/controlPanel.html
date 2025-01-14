@@ -1,124 +1,571 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>J5 Pharmacy PMS - Backend Support</title>
+    <title>PMS Backend Support</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
+        /* Dark mode styles */
         :root {
             --bg-color: #ffffff;
-            --text-color: #333333;
-            --header-bg: #f8f9fa;
-            --card-bg: #ffffff;
+            --text-color: #000000;
+            --card-bg: #f8f9fa;
             --border-color: #dee2e6;
+            --modal-bg: #ffffff;
+            --modal-text: #000000;
+            --btn-start: #4CAF50;
+            --btn-stop: #f44336;
+            --btn-restart: #FF9800;
+            --btn-update: #2196F3;
+            --btn-browser: #607D8B;
+            --btn-report: #E91E63;
         }
 
         [data-theme="dark"] {
             --bg-color: #1a1a1a;
             --text-color: #ffffff;
-            --header-bg: #2d2d2d;
-            --card-bg: #333333;
+            --card-bg: #2a2a2a;
             --border-color: #404040;
+            --modal-bg: #2a2a2a;
+            --modal-text: #ffffff;
+            --btn-start: rgba(76, 175, 80, 0.8);
+            --btn-stop: rgba(244, 67, 54, 0.8);
+            --btn-restart: rgba(255, 152, 0, 0.8);
+            --btn-update: rgba(33, 150, 243, 0.8);
+            --btn-browser: rgba(96, 125, 139, 0.8);
+            --btn-report: rgba(233, 30, 99, 0.8);
         }
 
         body {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             transition: background-color 0.3s, color 0.3s;
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
         }
 
-        .header {
-            background-color: var(--header-bg);
-            padding: 15px 20px;
-            border-bottom: 1px solid var(--border-color);
-            transition: background-color 0.3s;
+        .card {
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
         }
 
-        .header-content {
+        /* Header additions */
+        .header-container {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: 10px 20px;
+            margin-bottom: 20px;
         }
 
         .title-section {
             flex-grow: 1;
         }
 
-        .title {
-            margin: 0;
-            font-size: 24px;
-            color: var(--text-color);
-        }
-
-        .subtitle {
-            margin: 5px 0 0 0;
-            font-size: 14px;
-            color: var(--text-color);
-            opacity: 0.8;
-        }
-
-        .controls-section {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .datetime {
+        .datetime-section {
+            margin-right: 20px;
             text-align: right;
-            font-size: 14px;
-            color: var(--text-color);
         }
 
         .theme-toggle {
-            background: none;
-            border: none;
-            cursor: pointer;
+            width: 60px;
+            height: 30px;
+            background-color: #555;
+            border-radius: 15px;
             padding: 5px;
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .theme-toggle i {
+            color: #fff;
+            font-size: 14px;
+            z-index: 1;
+            position: relative;
+            width: 20px;
+            text-align: center;
+        }
+
+        .theme-toggle::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: #fff;
+            border-radius: 50%;
+            transition: transform 0.3s;
+            left: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .theme-toggle.dark::before {
+            transform: translate(30px, -50%);
+        }
+
+        .datetime {
+            font-size: 16px;
+            color: var(--text-color);
+        }
+
+        .date {
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .time {
+            font-size: 16px;
+        }
+
+        .header {
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: #2196F3;
+            font-size: 24px;
+        }
+
+        .header p {
+            margin: 5px 0;
+            color: #666;
+        }
+
+        .main-content {
+            display: flex;
+            flex: 1;
+            gap: 20px;
+            min-height: 0;
+        }
+
+        .log-section {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            background: #1E1E1E;
+            border-radius: 8px;
+            padding: 10px;
+            height: calc(100vh - 250px);
+        }
+
+        #log {
+            flex: 1;
+            color: #00FF00;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 0;
+            padding: 10px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .control-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .status-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 10px;
+        }
+
+        .status-text {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            transition: background-color 0.3s;
+            gap: 8px;
         }
 
-        .theme-toggle:hover {
-            background-color: rgba(128, 128, 128, 0.1);
+        button:hover {
+            opacity: 0.9;
         }
 
-        .theme-toggle svg {
-            width: 24px;
-            height: 24px;
-            fill: var(--text-color);
+        .start-btn {
+            background-color: #4CAF50;
+            color: white;
         }
 
-        /* Rest of your existing styles... */
+        .stop-btn {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .restart-btn {
+            background-color: #FF9800;
+            color: white;
+        }
+
+        .update-btn {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        .browser-btn {
+            background-color: #607D8B;
+            color: white;
+        }
+
+        .utility-buttons {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            background: #2c2c2c;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .utility-btn {
+            background-color: #2196F3;
+            color: white;
+            padding: 8px 16px;
+            font-size: 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .utility-btn:hover {
+            background-color: #1976D2;
+        }
+
+        .logo-container {
+            flex: 1 0 auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            margin-top: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-height: 150px;
+            max-height: 250px;
+        }
+
+        .logo-container img {
+            max-width: 100%;
+            height: auto;
+            width: auto;
+            max-height: 120px;
+            object-fit: contain;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .logo-text {
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .network-status {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .network-connected {
+            background-color: #E8F5E9;
+            color: #2E7D32;
+        }
+
+        .network-disconnected {
+            background-color: #FFEBEE;
+            color: #C62828;
+        }
+
+        .update-status {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            color: #2196F3;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: relative;
+            background-color: var(--modal-bg);
+            margin: 5% auto;
+            padding: 20px;
+            width: 70%;
+            max-width: 700px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            color: var(--modal-text);
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .modal-title {
+            margin: 0;
+            color: var(--text-color);
+            font-size: 20px;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .close:hover {
+            color: #f44336;
+        }
+
+        /* Developer Card Styles */
+        .developer-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .developer-card {
+            background-color: var(--card-bg);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .developer-card h3 {
+            margin: 0;
+            color: var(--text-color);
+            font-size: 16px;
+        }
+
+        .developer-card p {
+            margin: 5px 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* Report Problem Button */
+        .report-btn {
+            background-color: #E91E63;
+            color: white;
+            margin-top: 10px;
+        }
+
+        /* Report Problem Modal Styles */
+        .report-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group select,
+        .form-group input,
+        .form-group textarea {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-group select {
+            background-color: white;
+        }
+
+        .image-preview {
+            max-width: 200px;
+            max-height: 200px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .submit-report {
+            background-color: #E91E63;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .submit-report:hover {
+            background-color: #D81B60;
+        }
+
+        /* Add these styles to your existing styles */
+        .progress-bar-container {
+            width: 100%;
+            height: 20px;
+            background-color: #f5f5f5;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: #2196F3;
+            transition: width 0.3s ease;
+        }
+
+        .primary-btn {
+            background-color: #2196F3;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .secondary-btn {
+            background-color: #9e9e9e;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .error-message {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+
+        /* Add hover effects */
+        .primary-btn:hover {
+            background-color: #1976D2;
+        }
+
+        .secondary-btn:hover {
+            background-color: #757575;
+        }
+
+        /* Add these styles to your existing styles */
+        .modal-footer {
+            margin-top: 20px;
+            text-align: right;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .primary-btn {
+            background-color: #2196F3;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .secondary-btn {
+            background-color: #9e9e9e;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Button colors */
+        .start-btn { background-color: var(--btn-start); }
+        .stop-btn { background-color: var(--btn-stop); }
+        .restart-btn { background-color: var(--btn-restart); }
+        .update-btn { background-color: var(--btn-update); }
+        .browser-btn { background-color: var(--btn-browser); }
+        .report-btn { background-color: var(--btn-report); }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="header-content">
-            <div class="title-section">
-                <h1 class="title">J5 Pharmacy Management System - Backend Support</h1>
-                <p class="subtitle">Control panel for managing the J5 Pharmacy Management System backend server and system monitoring.</p>
+    <div class="header-container">
+        <div class="title-section">
+            <h1>J5 Pharmacy Management System - Backend Support</h1>
+            <p>Control panel for managing the J5 Pharmacy Management System backend server and system monitoring.</p>
+        </div>
+        <div class="datetime-section">
+            <div class="datetime">
+                <div class="date" id="current-date"></div>
+                <div class="time" id="current-time"></div>
             </div>
-            <div class="controls-section">
-                <div class="datetime">
-                    <div id="time"></div>
-                    <div id="date"></div>
-                </div>
-                <button class="theme-toggle" id="themeToggle" title="Toggle theme">
-                    <svg class="sun-icon" viewBox="0 0 24 24">
-                        <path d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0s.39-1.03 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41s1.03.39 1.41 0l1.06-1.06z"/>
-                    </svg>
-                    <svg class="moon-icon" viewBox="0 0 24 24" style="display: none;">
-                        <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.03 0-5.5-2.47-5.5-5.5 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/>
-                    </svg>
-                </button>
-            </div>
+        </div>
+        <div class="theme-toggle" id="theme-toggle">
+            <i class="fas fa-sun"></i>
+            <i class="fas fa-moon"></i>
         </div>
     </div>
 
@@ -211,22 +658,36 @@
     <!-- About Modal -->
     <div id="aboutModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="document.getElementById('aboutModal').style.display='none'">&times;</span>
+            <span class="close">&times;</span>
             <div class="modal-header">
-                <h2 class="modal-title">About J5 Pharmacy PMS</h2>
+                <h2 class="modal-title">About PMS Backend Support</h2>
             </div>
             <div class="modal-body">
-                <p><strong>Version:</strong> <span id="aboutVersion"></span></p>
-                <p>J5 Pharmacy Management System is a comprehensive solution for managing pharmacy operations efficiently.</p>
-                <p>This backend support application helps you manage the server and monitor system performance.</p>
-                <p><strong>Features:</strong></p>
+                <p>The Backend Support application manages and monitors the core server functionality of the J5 Pharmacy Management System.</p>
+                
+                <h3>Backend Capabilities</h3>
                 <ul>
-                    <li>Server management and monitoring</li>
-                    <li>Automatic updates</li>
-                    <li>System diagnostics</li>
-                    <li>Error logging and reporting</li>
+                    <li><strong>Server Management:</strong> Start, stop, and monitor the backend server</li>
+                    <li><strong>Database Operations:</strong> Handles MySQL database connections and queries</li>
+                    <li><strong>API Services:</strong> RESTful API endpoints for frontend communication</li>
+                    <li><strong>Real-time Updates:</strong> WebSocket integration for live data synchronization</li>
+                    <li><strong>Security:</strong> JWT authentication and request validation</li>
+                    <li><strong>Error Logging:</strong> Comprehensive error tracking and logging system</li>
                 </ul>
-                <p><strong>&copy; 2025 Zen Garden</strong></p>
+
+                <h3>System Requirements</h3>
+                <ul>
+                    <li>Node.js Runtime Environment</li>
+                    <li>Minimum 4GB RAM</li>
+                    <li>Windows 8 or higher</li>
+                </ul>
+
+                <h3>Version Information</h3>
+                <p>Version: 1.0.2</p>
+                <p>© 2025 Zen Garden. All rights reserved.</p>
+                
+                <h3>Support</h3>
+                <p>For technical support and inquiries, please contact the development team through the Developers section.</p>
             </div>
         </div>
     </div>
@@ -731,57 +1192,43 @@
         });
 
         // Theme toggle functionality
-        const themeToggle = document.getElementById('themeToggle');
-        const sunIcon = document.querySelector('.sun-icon');
-        const moonIcon = document.querySelector('.moon-icon');
-        
-        // Load saved theme
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        document.documentElement.setAttribute('data-theme', savedTheme);
-        updateThemeIcon(savedTheme);
+        const themeToggle = document.getElementById('theme-toggle');
+        const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+        let currentTheme = localStorage.getItem('theme') || (prefersDarkScheme.matches ? 'dark' : 'light');
 
-        themeToggle.addEventListener('click', () => {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            updateThemeIcon(newTheme);
-        });
-
-        function updateThemeIcon(theme) {
-            if (theme === 'dark') {
-                sunIcon.style.display = 'none';
-                moonIcon.style.display = 'block';
-            } else {
-                sunIcon.style.display = 'block';
-                moonIcon.style.display = 'none';
-            }
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            themeToggle.classList.toggle('dark', theme === 'dark');
         }
 
-        // Time and date update
+        setTheme(currentTheme);
+
+        themeToggle.addEventListener('click', () => {
+            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+            setTheme(currentTheme);
+        });
+
+        // Date and time functionality
         function updateDateTime() {
             const now = new Date();
-            const timeElement = document.getElementById('time');
-            const dateElement = document.getElementById('date');
+            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
             
-            timeElement.textContent = now.toLocaleTimeString();
-            dateElement.textContent = now.toLocaleDateString();
+            document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', dateOptions);
+            document.getElementById('current-time').textContent = now.toLocaleTimeString('en-US', timeOptions);
         }
 
         updateDateTime();
         setInterval(updateDateTime, 1000);
 
-        // Get version for About modal
-        const { remote } = require('electron');
-        const app = remote ? remote.app : require('@electron/remote').app;
-        const version = app.getVersion();
-
-        // Update About modal content when it's opened
+        // Update About version
         document.addEventListener('DOMContentLoaded', () => {
-            const aboutVersion = document.getElementById('aboutVersion');
+            const { app } = require('@electron/remote');
+            const version = app.getVersion();
+            const aboutVersion = document.querySelector('#about-version');
             if (aboutVersion) {
-                aboutVersion.textContent = version;
+                aboutVersion.textContent = `Version ${version}`;
             }
         });
     </script>
