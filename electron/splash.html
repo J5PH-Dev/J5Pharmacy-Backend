@@ -119,11 +119,11 @@
         <div class="credits">© 2025 | Zen Garden</div>
     </div>
     <script>
-        const { app } = require('@electron/remote');
+        const { version } = require('../package.json');
         document.addEventListener('DOMContentLoaded', () => {
             const versionElement = document.getElementById('version');
             if (versionElement) {
-                versionElement.textContent = app.getVersion();
+                versionElement.textContent = version;
             }
         });
     </script>

@@ -73,12 +73,12 @@
         }
 
         .datetime-section {
-            margin-right: 20px;
+            margin-right: 18px;
             text-align: right;
         }
 
         .datetime {
-            font-size: 18px;
+            font-size: 16px;
             color: var(--text-color);
         }
 
@@ -997,7 +997,131 @@
             width: 100%;
             box-sizing: border-box;
         }
-</style>
+
+        /* Add Settings Modal */
+        #settingsModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        #settingsModal .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: var(--modal-bg);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            max-width: 600px;
+        }
+
+        #settingsModal .modal-header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        #settingsModal .modal-title {
+            margin: 0;
+            color: var(--text-color);
+            font-size: 20px;
+        }
+
+        #settingsModal .modal-body {
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        #settingsModal .close {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        #settingsModal .close:hover {
+            color: #f44336;
+        }
+
+        #settingsModal .settings-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: var(--card-bg);
+            border-radius: 8px;
+        }
+
+        #settingsModal .settings-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        #settingsModal .settings-description {
+            margin-top: 5px;
+            color: var(--text-color);
+            opacity: 0.8;
+            font-size: 14px;
+        }
+
+        #settingsModal .modal-footer {
+            margin-top: 20px;
+            text-align: right;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        #settingsModal .primary-btn {
+            background-color: #2196F3;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #settingsModal .secondary-btn {
+            background-color: #9e9e9e;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #settingsModal .primary-btn:hover {
+            background-color: #1976D2;
+        }
+
+        #settingsModal .secondary-btn:hover {
+            background-color: #757575;
+        }
+
+        #settingsModal .saveSettingsBtn {
+            background-color: #2196F3;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #settingsModal .saveSettingsBtn:hover {
+            background-color: #1976D2;
+        }
+    </style>
 </head>
 <body>
     <div class="header-container">
@@ -1085,12 +1209,12 @@
                 </div>
 
                 <div id="getting-started" class="tab-content active">
-                    <h3>Getting Started</h3>
-                    <ol>
-                        <li>Click "Start Server" to initialize the backend server</li>
-                        <li>Wait for the server status to show "Server is running"</li>
-                        <li>Click "Open Browser" to access the PMS web interface</li>
-                    </ol>
+                <h3>Getting Started</h3>
+                <ol>
+                    <li>Click "Start Server" to initialize the backend server</li>
+                    <li>Wait for the server status to show "Server is running"</li>
+                    <li>Click "Open Browser" to access the PMS web interface</li>
+                </ol>
 
                     <h3>Status Indicators</h3>
                     <ul>
@@ -1101,23 +1225,23 @@
                 </div>
 
                 <div id="controls" class="tab-content">
-                    <h3>Server Controls</h3>
-                    <ul>
+                <h3>Server Controls</h3>
+                <ul>
                         <li><strong>Start Server:</strong> Initializes the backend server and database connections</li>
                         <li><strong>Stop Server:</strong> Safely shuts down the server and closes all connections</li>
                         <li><strong>Restart Server:</strong> Performs a complete server restart (useful for applying changes)</li>
                         <li><strong>Check for Updates:</strong> Manually checks if a new version is available</li>
                         <li><strong>Open Browser:</strong> Opens the PMS web interface in your default browser</li>
                         <li><strong>Report Problem:</strong> Submit issues or bugs to the development team</li>
-                    </ul>
+                </ul>
 
                     <h3>Utility Functions</h3>
                     <ul>
                         <li><strong>Open Logs Folder:</strong> Access all system logs and error reports</li>
                         <li><strong>Check Network:</strong> Verify your internet connection status</li>
                         <li><strong>Save System Logs:</strong> Export current session logs for troubleshooting</li>
-                    </ul>
-                </div>
+                </ul>
+            </div>
 
                 <div id="troubleshoot" class="tab-content">
                     <h3>Common Issues</h3>
@@ -1142,8 +1266,8 @@
                             <li>Note any actions that led to the crash</li>
                             <li>Use "Report Problem" to notify developers</li>
                         </ol>
-                    </div>
-                </div>
+        </div>
+    </div>
 
                 <div id="best-practices" class="tab-content">
                     <h3>Best Practices</h3>
@@ -1180,7 +1304,7 @@
                 <div class="about-section">
                     <div class="about-card">
                         <h4>System Overview</h4>
-                        <p>The Backend Support application manages and monitors the core server functionality of the J5 Pharmacy Management System.</p>
+                <p>The Backend Support application manages and monitors the core server functionality of the J5 Pharmacy Management System.</p>
                         <span class="version-badge">Version: <span id="app-version">Loading...</span></span>
                     </div>
 
@@ -1193,16 +1317,16 @@
                             <li>Real-time Updates</li>
                             <li>Security Features</li>
                             <li>Error Logging</li>
-                        </ul>
+                </ul>
                     </div>
 
                     <div class="about-card">
                         <h4>System Requirements</h4>
-                        <ul>
-                            <li>Node.js Runtime Environment</li>
-                            <li>Minimum 4GB RAM</li>
-                            <li>Windows 8 or higher</li>
-                        </ul>
+                <ul>
+                    <li>Node.js Runtime Environment</li>
+                    <li>Minimum 4GB RAM</li>
+                    <li>Windows 8 or higher</li>
+                </ul>
                     </div>
                 </div>
                 <p style="text-align: center; margin-top: 20px;">© 2025 Zen Garden. All rights reserved.</p>
@@ -1227,7 +1351,7 @@
                         <div class="social-links">
                             <a href="#"><i class="fab fa-github"></i></a>
                             <a href="#"><i class="fab fa-facebook"></i></a>
-                        </div>
+                    </div>
                     </div>
 
                     <div class="developer-card">
@@ -1238,7 +1362,7 @@
                         <div class="social-links">
                             <a href="#"><i class="fab fa-github"></i></a>
                             <a href="#"><i class="fab fa-facebook"></i></a>
-                        </div>
+                    </div>
                     </div>
 
                     <div class="developer-card">
@@ -1249,7 +1373,7 @@
                         <div class="social-links">
                             <a href="#"><i class="fab fa-github"></i></a>
                             <a href="#"><i class="fab fa-facebook"></i></a>
-                        </div>
+                    </div>
                     </div>
 
                     <div class="developer-card">
@@ -1260,7 +1384,7 @@
                         <div class="social-links">
                             <a href="#"><i class="fab fa-github"></i></a>
                             <a href="#"><i class="fab fa-facebook"></i></a>
-                        </div>
+                    </div>
                     </div>
 
                     <div class="developer-card">
@@ -1333,9 +1457,9 @@
                     <div class="form-group">
                         <label>Screenshots (optional)</label>
                         <div class="file-upload-container">
-                            <input type="file" id="imageAttachment" accept="image/*" multiple>
-                            <div id="imagePreview" class="image-preview"></div>
-                        </div>
+                        <input type="file" id="imageAttachment" accept="image/*" multiple>
+                        <div id="imagePreview" class="image-preview"></div>
+                    </div>
                     </div>
 
                     <button type="submit" class="submit-report">
@@ -1343,7 +1467,7 @@
                     </button>
                 </form>
             </div>
-        </div>
+    </div>
     </div>
 
     <!-- Update Modal -->
@@ -1377,6 +1501,40 @@
             <div class="modal-footer" style="margin-top: 20px; text-align: right;">
                 <button id="postponeUpdate" class="secondary-btn">Postpone</button>
                 <button id="downloadUpdate" class="primary-btn">Download & Install</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="modal-header">
+                <h2 class="modal-title">Settings</h2>
+            </div>
+            <div class="modal-body">
+                <div class="settings-group">
+                    <label class="settings-label">
+                        <input type="checkbox" id="minimizeToTray"> 
+                        Minimize to System Tray
+                    </label>
+                    <p class="settings-description">
+                        When enabled, the application will minimize to the system tray instead of the taskbar
+                    </p>
+                </div>
+
+                <div class="settings-group">
+                    <label class="settings-label">
+                        <input type="checkbox" id="minimizeToTrayOnOpenBrowser"> 
+                        Minimize to System Tray when opening browser
+                    </label>
+                    <p class="settings-description">
+                        When enabled, the application will be minimized to the system tray whenever the "Open Browser" button is clicked.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="saveSettings" class="primary-btn">Save Settings</button>
             </div>
         </div>
     </div>
@@ -1751,8 +1909,8 @@
         let currentTheme = localStorage.getItem('theme') || (prefersDarkScheme.matches ? 'dark' : 'light');
 
         function setTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme);
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
         themeToggle.querySelector('input').checked = theme === 'dark'; // Ensure checkbox reflects the theme
         }
 
@@ -1760,7 +1918,7 @@
 
         themeToggle.querySelector('input').addEventListener('change', (event) => {
         currentTheme = event.target.checked ? 'dark' : 'light';
-        setTheme(currentTheme);
+            setTheme(currentTheme);
         });
 
         // Date and time functionality
@@ -1798,7 +1956,7 @@
 
         // Alternative method using electron remote
         // This is more reliable as it doesn't depend on file access
-        const { app } = require('@electron/remote');
+            const { app } = require('@electron/remote');
         const appVersion = app.getVersion();
         const versionElement = document.getElementById('app-version');
         if (versionElement) {
@@ -1912,7 +2070,52 @@
                 submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Report';
             }
         });
-    
+
+        // Settings handling
+        const settingsModal = document.getElementById('settingsModal');
+        const minimizeToTrayCheckbox = document.getElementById('minimizeToTray');
+        const saveSettingsBtn = document.getElementById('saveSettings');
+
+        ipcRenderer.on('show:settings', () => {
+            settingsModal.style.display = 'block';
+        });
+
+        saveSettingsBtn.addEventListener('click', () => {
+            const settings = {
+                minimizeToTray: minimizeToTrayCheckbox.checked,
+                minimizeToTrayOnOpenBrowser: document.getElementById('minimizeToTrayOnOpenBrowser').checked
+            };
+            ipcRenderer.send('settings:save', settings);
+            settingsModal.style.display = 'none';
+            appendLog('Settings saved');
+        });
+
+        // Add CSS for settings
+        const style = document.createElement('style');
+        style.textContent = `
+            .settings-group {
+                margin-bottom: 20px;
+                padding: 15px;
+                background: var(--card-bg);
+                border-radius: 8px;
+            }
+
+            .settings-label {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-weight: bold;
+                color: var(--text-color);
+            }
+
+            .settings-description {
+                margin-top: 5px;
+                color: var(--text-color);
+                opacity: 0.8;
+                font-size: 14px;
+            }
+        `;
+        document.head.appendChild(style);
     </script>
 </body>
 </html> 

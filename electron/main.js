@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, Tray } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, Tray, Notification } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -25,6 +25,10 @@ const MAX_POSTPONE_COUNT = 3; // Maximum times a user can postpone an update
 let nodeCheckWindow;
 let splashScreen;
 let tray = null;
+
+// Add settings to store minimize preference
+let minimizeToTray = false;
+let minimizeToTrayOnOpenBrowser = false;
 
 // Store server state
 function saveServerState(state) {
@@ -207,6 +211,12 @@ function createMenu() {
       ]
     },
     {
+      label: 'Settings',
+      click: () => {
+        controlPanel.webContents.send('show:settings');
+      }
+    },
+    {
       label: 'Help',
       submenu: [
         {
@@ -354,6 +364,23 @@ function createControlPanel() {
     }
 
     require('@electron/remote/main').enable(controlPanel.webContents);
+
+    // Add these event listeners after controlPanel is created
+    controlPanel.on('minimize', (e) => {
+      if (minimizeToTray) {
+        e.preventDefault();
+        controlPanel.hide();
+        showTrayNotification('PMS Backend Support is running in the background');
+      }
+    });
+
+    // Add the close event handler here
+    controlPanel.on('close', (e) => {
+      if (serverRunning) {
+        e.preventDefault();
+        controlPanel.webContents.send('confirm:exit');
+      }
+    });
   } catch (err) {
     logError(`Failed to create control panel: ${err}`);
   }
@@ -638,49 +665,20 @@ function saveSystemLogs(logs, type = 'error') {
 // Add network connectivity check
 async function checkNetworkConnectivity() {
   try {
-    // Try multiple DNS servers
-    const dnsServers = ['8.8.8.8', '1.1.1.1', '208.67.222.222'];
-    let dnsResolved = false;
-    
-    for (const server of dnsServers) {
-      try {
-        await new Promise((resolve, reject) => {
-          dns.lookup(server, (err) => {
-            if (!err) {
-              dnsResolved = true;
-              resolve();
-            } else {
-              reject(err);
-            }
-          });
+    // Try HTTP request first
+    try {
+      await new Promise((resolve, reject) => {
+        const req = https.get('https://www.google.com', { timeout: 5000 }, (res) => {
+          if (res.statusCode === 200) {
+            resolve();
+          } else {
+            reject(new Error(`HTTP status: ${res.statusCode}`));
+          }
         });
-        if (dnsResolved) break;
-      } catch (err) {
-        console.log(`DNS lookup failed for ${server}:`, err);
-      }
-    }
+        req.on('error', reject);
+      });
 
-    // If DNS failed, try HTTP request
-    if (!dnsResolved) {
-      try {
-        await new Promise((resolve, reject) => {
-          const req = https.get('https://www.google.com', { timeout: 5000 }, (res) => {
-            if (res.statusCode === 200) {
-              dnsResolved = true;
-              resolve();
-            } else {
-              reject(new Error(`HTTP status: ${res.statusCode}`));
-            }
-          });
-          req.on('error', reject);
-        });
-      } catch (err) {
-        console.log('HTTP check failed:', err);
-      }
-    }
-
-    // Only do ping test if we have confirmed connectivity
-    if (dnsResolved) {
+      // If HTTP request succeeds, do ping test
       const res = await ping.promise.probe('8.8.8.8', {
         timeout: 2,
         min_reply: 1
@@ -688,14 +686,15 @@ async function checkNetworkConnectivity() {
 
       return {
         connected: true,
-        latency: res.time
+        latency: res.alive ? res.time : 'unknown'
+      };
+    } catch (err) {
+      console.log('HTTP check failed:', err);
+      return {
+        connected: false,
+        latency: null
       };
     }
-
-    return {
-      connected: false,
-      latency: null
-    };
   } catch (err) {
     console.error('Network check error:', err);
     return {
@@ -833,6 +832,11 @@ ipcMain.on('open:browser', () => {
     }
     browserWindow.show();
     browserWindow.maximize();
+    
+    if (minimizeToTrayOnOpenBrowser) {
+      controlPanel.hide();
+      showTrayNotification('Application is running in the background');
+    }
   }
 });
 
@@ -1231,27 +1235,30 @@ function createTray() {
   tray.setToolTip('J5 Pharmacy PMS Backend Support');
   tray.setContextMenu(contextMenu);
   
-  // Show notification when minimized
-  controlPanel.on('minimize', () => {
-    if (tray) {
-      const notification = {
-        title: 'PMS Backend Support',
-        body: 'Application is running in the background',
-        icon: iconPath
-      };
-      new Notification(notification).show();
-    }
-  });
-  
-  // Show notification when browser is opened
-  ipcMain.on('open:browser', () => {
-    if (tray) {
-      const notification = {
-        title: 'PMS Backend Support',
-        body: 'Application will continue running in the background',
-        icon: iconPath
-      };
-      new Notification(notification).show();
-    }
-  });
+  // Add these event listeners after tray is created
+  if (controlPanel) {
+    controlPanel.on('minimize', () => {
+      if (tray) {
+        showTrayNotification('Application is running in the background');
+      }
+    });
+  }
+} 
+
+// Add settings IPC handlers
+ipcMain.on('settings:save', (event, settings) => {
+  minimizeToTray = settings.minimizeToTray;
+  minimizeToTrayOnOpenBrowser = settings.minimizeToTrayOnOpenBrowser;
+});
+
+function showTrayNotification(message) {
+  if (tray) {
+    const notification = new Notification({
+      title: 'PMS Backend Support',
+      body: message,
+      icon: path.join(__dirname, 'icons', 'icon.ico'),
+      silent: false
+    });
+    notification.show();
+  }
 } 

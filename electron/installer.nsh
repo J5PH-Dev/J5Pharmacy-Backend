@@ -18,7 +18,7 @@
   SetOutPath "$INSTDIR\resources\app\electron\icons"
   File "${BUILD_RESOURCES_DIR}\..\electron\icons\icon.ico"
   
-  ; Set the icon for the main executable
+  ; Set the icon for the main executable and Start Menu
   WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_FILENAME}.exe\DefaultIcon" "" "$INSTDIR\resources\app\electron\icons\icon.ico"
   
   ; Create desktop shortcut with correct icon
@@ -31,11 +31,13 @@
   ; Write registry keys for proper icon and application paths
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\${PRODUCT_FILENAME}.exe" "" "$INSTDIR\${PRODUCT_FILENAME}.exe"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\App Paths\${PRODUCT_FILENAME}.exe" "Path" "$INSTDIR"
-  WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_FILENAME}.exe\DefaultIcon" "" "$INSTDIR\resources\app\electron\icons\icon.ico"
   
   ; Set application icon in registry
   WriteRegStr HKLM "Software\Classes\${PRODUCT_NAME}\DefaultIcon" "" "$INSTDIR\resources\app\electron\icons\icon.ico"
   WriteRegStr HKLM "Software\Classes\${PRODUCT_NAME}\shell\open\command" "" '"$INSTDIR\${PRODUCT_FILENAME}.exe" "%1"'
+  
+  ; Force icon cache refresh
+  System::Call 'Shell32::SHChangeNotify(i 0x8000000, i 0, i 0, i 0)'
 !macroend
 
 !macro customUnInstall
