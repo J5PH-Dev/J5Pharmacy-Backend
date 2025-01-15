@@ -112,20 +112,20 @@
     <div class="container">
         <img src="icons/icon.ico" alt="Logo" class="logo">
         <div class="title">J5 Pharmacy Management System</div>
-        <div class="version">Version <span id="version">1.0.8</span></div>
+        <div class="version">Version <span id="version">1.0.10</span></div>
         <div class="loading">
             <div class="loading-bar"></div>
         </div>
         <div class="credits">© 2025 | Zen Garden</div>
     </div>
     <script>
-        // Get version from electron
-        try {
-            const { app } = require('@electron/remote');
-            document.getElementById('version').textContent = app.getVersion();
-        } catch (error) {
-            console.error('Error getting version:', error);
-        }
+        const { app } = require('@electron/remote');
+        document.addEventListener('DOMContentLoaded', () => {
+            const versionElement = document.getElementById('version');
+            if (versionElement) {
+                versionElement.textContent = app.getVersion();
+            }
+        });
     </script>
 </body>
 </html> 

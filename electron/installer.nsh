@@ -35,6 +35,7 @@
   
   ; Set application icon in registry
   WriteRegStr HKLM "Software\Classes\${PRODUCT_NAME}\DefaultIcon" "" "$INSTDIR\resources\app\electron\icons\icon.ico"
+  WriteRegStr HKLM "Software\Classes\${PRODUCT_NAME}\shell\open\command" "" '"$INSTDIR\${PRODUCT_FILENAME}.exe" "%1"'
 !macroend
 
 !macro customUnInstall

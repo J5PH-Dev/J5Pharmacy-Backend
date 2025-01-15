@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, Tray } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
@@ -24,6 +24,7 @@ let updatePostponeCount = 0;
 const MAX_POSTPONE_COUNT = 3; // Maximum times a user can postpone an update
 let nodeCheckWindow;
 let splashScreen;
+let tray = null;
 
 // Store server state
 function saveServerState(state) {
@@ -130,6 +131,9 @@ function checkForUpdates() {
           const currentVersion = app.getVersion();
           const latestVersion = release.tag_name.replace('v', '');
           
+          // Add proper version comparison
+          const hasUpdate = compareVersions(currentVersion, latestVersion) < 0;
+          
           // Find the Windows installer asset
           const windowsAsset = release.assets.find(asset => 
             asset.name === 'J5PMS-setup.exe'
@@ -143,7 +147,7 @@ function checkForUpdates() {
           }
 
           const updateInfo = {
-            hasUpdate: currentVersion < latestVersion,
+            hasUpdate,
             currentVersion,
             latestVersion,
             downloadUrl: windowsAsset ? windowsAsset.browser_download_url : null,
@@ -175,6 +179,18 @@ function checkForUpdates() {
 
     req.end();
   });
+}
+
+// Add this helper function for semantic version comparison
+function compareVersions(v1, v2) {
+  const v1Parts = v1.split('.').map(Number);
+  const v2Parts = v2.split('.').map(Number);
+  
+  for (let i = 0; i < 3; i++) {
+    if (v1Parts[i] > v2Parts[i]) return 1;
+    if (v1Parts[i] < v2Parts[i]) return -1;
+  }
+  return 0;
 }
 
 function createMenu() {
@@ -305,6 +321,7 @@ function createControlPanel() {
           splashScreen.close();
           splashScreen = null;
         }
+        createTray(); // Create tray icon after window is ready
       }, 5000); // Show splash for at least 2 seconds
     });
 
@@ -621,23 +638,63 @@ function saveSystemLogs(logs, type = 'error') {
 // Add network connectivity check
 async function checkNetworkConnectivity() {
   try {
-    // First check DNS resolution
-    await new Promise((resolve, reject) => {
-      dns.lookup('google.com', (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    });
+    // Try multiple DNS servers
+    const dnsServers = ['8.8.8.8', '1.1.1.1', '208.67.222.222'];
+    let dnsResolved = false;
+    
+    for (const server of dnsServers) {
+      try {
+        await new Promise((resolve, reject) => {
+          dns.lookup(server, (err) => {
+            if (!err) {
+              dnsResolved = true;
+              resolve();
+            } else {
+              reject(err);
+            }
+          });
+        });
+        if (dnsResolved) break;
+      } catch (err) {
+        console.log(`DNS lookup failed for ${server}:`, err);
+      }
+    }
 
-    // Then check ping
-    const res = await ping.promise.probe('8.8.8.8', {
-      timeout: 2,
-      min_reply: 1
-    });
+    // If DNS failed, try HTTP request
+    if (!dnsResolved) {
+      try {
+        await new Promise((resolve, reject) => {
+          const req = https.get('https://www.google.com', { timeout: 5000 }, (res) => {
+            if (res.statusCode === 200) {
+              dnsResolved = true;
+              resolve();
+            } else {
+              reject(new Error(`HTTP status: ${res.statusCode}`));
+            }
+          });
+          req.on('error', reject);
+        });
+      } catch (err) {
+        console.log('HTTP check failed:', err);
+      }
+    }
+
+    // Only do ping test if we have confirmed connectivity
+    if (dnsResolved) {
+      const res = await ping.promise.probe('8.8.8.8', {
+        timeout: 2,
+        min_reply: 1
+      });
+
+      return {
+        connected: true,
+        latency: res.time
+      };
+    }
 
     return {
-      connected: res.alive,
-      latency: res.time
+      connected: false,
+      latency: null
     };
   } catch (err) {
     console.error('Network check error:', err);
@@ -1153,3 +1210,48 @@ ipcMain.on('app:quit', () => {
   }
   app.quit();
 }); 
+
+function createTray() {
+  const iconPath = path.join(__dirname, 'icons', 'icon.ico');
+  tray = new Tray(iconPath);
+  
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Show', click: () => { if (controlPanel) controlPanel.show(); } },
+    { type: 'separator' },
+    { label: 'Start Server', click: () => { if (!serverRunning) startServer(); } },
+    { label: 'Stop Server', click: () => { if (serverRunning) stopServer(); } },
+    { label: 'Restart Server', click: () => { 
+      stopServer();
+      setTimeout(() => startServer(), 1000);
+    }},
+    { type: 'separator' },
+    { label: 'Exit', click: () => app.quit() }
+  ]);
+
+  tray.setToolTip('J5 Pharmacy PMS Backend Support');
+  tray.setContextMenu(contextMenu);
+  
+  // Show notification when minimized
+  controlPanel.on('minimize', () => {
+    if (tray) {
+      const notification = {
+        title: 'PMS Backend Support',
+        body: 'Application is running in the background',
+        icon: iconPath
+      };
+      new Notification(notification).show();
+    }
+  });
+  
+  // Show notification when browser is opened
+  ipcMain.on('open:browser', () => {
+    if (tray) {
+      const notification = {
+        title: 'PMS Backend Support',
+        body: 'Application will continue running in the background',
+        icon: iconPath
+      };
+      new Notification(notification).show();
+    }
+  });
+} 
