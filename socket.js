@@ -11,13 +11,14 @@ const initializeSocket = (server) => {
 
     io = socketIo(server, {
         cors: {
-            origin: process.env.FRONTEND_URL || "http://localhost:3000",
-            methods: ["GET", "POST"]
+            origin: ['http://localhost:5000', 'https://pmspos.j5pharmacy.com'],
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+            allowedHeaders: ["Content-Type", "Authorization"],
+            credentials: true
         },
-        // Add ping timeout and interval settings
+        transports: ['websocket', 'polling'],
         pingTimeout: 60000,
         pingInterval: 25000,
-        // Clean up disconnected sockets
         cleanupEmptyChildNamespaces: true
     });
 

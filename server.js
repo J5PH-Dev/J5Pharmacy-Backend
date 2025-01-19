@@ -25,34 +25,14 @@ const devRoutes = require('./routes/dev.routes');
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: ['http://localhost:3000', 'https://pms.j5pharmacy.com'],
-    methods: ['GET', 'POST'],
-    credentials: true
-  }
-});
 
-// WebSocket connection handling
-io.on('connection', (socket) => {
-  const clientIP = socket.handshake.headers['x-forwarded-for'] || socket.handshake.address;
-  console.log(`Client connected from IP: ${clientIP}`);
-
-  // Handle real-time transaction updates
-  socket.on('new_transaction', (data) => {
-    // Broadcast to all connected clients
-    io.emit('transaction_update', data);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Client disconnected');
-  });
-});
+// Initialize Socket.io from the centralized socket.js
+initializeSocket(httpServer);
 
 // CORS configuration
 const corsOptions = {
-  origin: ['http://localhost:3000', 'https://pms.j5pharmacy.com'], // Allow both localhost and production URL
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  origin: ['http://localhost:5000', 'https://pmspos.j5pharmacy.com'], // Allow both localhost and production URL
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 };
@@ -98,9 +78,6 @@ const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
-// Initialize Socket.io
-initializeSocket(httpServer);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
