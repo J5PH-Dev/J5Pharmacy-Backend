@@ -18,7 +18,7 @@ const upload = multer({
 // Get all users with their branch information
 const getAllUsers = async (req, res) => {
     try {
-        const { include_archived, role, branch_id } = req.query;
+        const { include_archived, role, branch_id, page = 1, limit = 10 } = req.query;
         let conditions = [];
         let params = [];
 
@@ -40,6 +40,7 @@ const getAllUsers = async (req, res) => {
         }
 
         const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+        const offset = (page - 1) * limit;
 
         const [users] = await db.pool.query(
             `SELECT u.user_id, u.employee_id, u.name, u.role, u.email, u.phone, 
@@ -54,8 +55,9 @@ const getAllUsers = async (req, res) => {
              FROM users u
              LEFT JOIN branches b ON u.branch_id = b.branch_id
              ${whereClause}
-             ORDER BY u.created_at DESC`,
-            params
+             ORDER BY u.created_at DESC
+             LIMIT ? OFFSET ?`,
+            [...params, parseInt(limit), parseInt(offset)]
         );
 
         res.json({ success: true, data: users });
@@ -267,7 +269,7 @@ const archiveUser = async (req, res) => {
 // Get all pharmacists
 const getAllPharmacists = async (req, res) => {
     try {
-        const { include_archived, branch_id } = req.query;
+        const { include_archived, branch_id, page = 1, limit = 10 } = req.query;
         let conditions = [];
         let params = [];
 
@@ -283,6 +285,7 @@ const getAllPharmacists = async (req, res) => {
         }
 
         const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : '';
+        const offset = (page - 1) * limit;
 
         const [pharmacists] = await db.pool.query(
             `SELECT p.staff_id, p.name, p.email, p.phone, p.pin_code, 
@@ -296,10 +299,56 @@ const getAllPharmacists = async (req, res) => {
              FROM pharmacist p
              LEFT JOIN branches b ON p.branch_id = b.branch_id
              ${whereClause}
+             ORDER BY p.created_at DESC
+             LIMIT ? OFFSET ?`,
+            [...params, parseInt(limit), parseInt(offset)]
+        );
+
+        res.json({ success: true, data: pharmacists });
+    } catch (error) {
+        console.error('Error fetching pharmacists:', error);
+        res.status(500).json({ success: false, message: 'Error fetching pharmacists' });
+    }
+};
+
+const getByBranchPharmacists = async (req, res) => {
+    try {
+        const { include_archived, branch_id } = req.query;
+        console.log('Query Params:', { include_archived, branch_id }); // Debugging
+
+        let conditions = [];
+        let params = [];
+
+        if (include_archived !== 'true') {
+            conditions.push('p.is_active = 1');
+        }
+
+        if (branch_id) {
+            conditions.push('p.branch_id = ?');
+            params.push(branch_id);
+        }
+
+        console.log('SQL Conditions:', conditions); // Debugging
+        console.log('Params:', params); // Debugging
+
+        const whereClause = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
+
+        const [pharmacists] = await db.pool.query(
+            `SELECT p.staff_id, p.name, p.email, p.phone, p.pin_code, 
+             p.branch_id, p.is_active, b.branch_name,
+             p.created_at, p.updated_at,
+             CASE WHEN p.image_data IS NOT NULL 
+                  THEN CONCAT('data:', p.image_type, ';base64,', TO_BASE64(p.image_data))
+                  ELSE NULL 
+             END AS image_url
+             FROM pharmacist p
+             LEFT JOIN branches b ON p.branch_id = b.branch_id
+             ${whereClause}
              ORDER BY p.created_at DESC`,
             params
         );
 
+        console.log('Fetched pharmacists data:', pharmacists); // Debugging
         res.json({ success: true, data: pharmacists });
     } catch (error) {
         console.error('Error fetching pharmacists:', error);
@@ -313,21 +362,21 @@ const createPharmacist = async (req, res) => {
     const connection = await db.pool.getConnection();
     try {
         await connection.beginTransaction();
-
         const {
             name,
             email,
             phone,
             pin_code,
-            branch_id
+            branch_id,
+            registered_at
         } = req.body;
 
         const [result] = await connection.query(
             `INSERT INTO pharmacist (
                 name, email, phone, pin_code, branch_id,
-                created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ${getMySQLTimestamp()}, ${getMySQLTimestamp()})`,
-            [name, email, phone, pin_code, branch_id]
+                created_at, updated_at, registered_at
+            ) VALUES (?, ?, ?, ?, ?, ${getMySQLTimestamp()}, ${getMySQLTimestamp()}, ?)`,
+            [name, email, phone, pin_code, branch_id, registered_at]
         );
 
         await connection.commit();
@@ -702,5 +751,6 @@ module.exports = {
     uploadUserImage,
     uploadPharmacistImage,
     removeUserImage,
-    removePharmacistImage
+    removePharmacistImage,
+    getByBranchPharmacists
 }; 

@@ -31,6 +31,8 @@ router.put('/users/:userId/remove-image', staffController.removeUserImage);
 
 // Pharmacist routes
 router.get('/pharmacists', staffController.getAllPharmacists);
+router.get('/pharmacistsByBranches', staffController.getByBranchPharmacists);
+
 router.post('/pharmacists', staffController.createPharmacist);
 router.put('/pharmacists/:staffId', staffController.updatePharmacist);
 router.put('/pharmacists/:staffId/archive', staffController.archivePharmacist);

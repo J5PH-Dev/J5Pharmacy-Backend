@@ -32,4 +32,7 @@ router.post('/:customer_id/restore', customerController.restoreCustomer);
 // Get customer details
 router.get('/:customer_id/details', customerController.getCustomerDetails);
 
+// Delete customer
+router.post('/:customer_id/delete', customerController.deleteArchivedCustomer);
+
 module.exports = router; 
