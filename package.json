@@ -1,6 +1,6 @@
 {
   "name": "j5pharmacy-backend",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Backend for J5 Pharmacy Management System",
   "author": "Zen Garden",
   "main": "server.js",
