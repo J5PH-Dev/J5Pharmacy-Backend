@@ -700,7 +700,7 @@ const processBulkImport = async (req, res) => {
                         product.dosage_amount,
                         product.dosage_unit,
                         product.price || 50.00,
-                        product.pieces_per_box || null,
+                        product.pieces_per_box || 1,
                         product.critical || 10,
                         product.requiresPrescription || false
                     ]
