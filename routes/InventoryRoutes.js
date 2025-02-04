@@ -1,8 +1,8 @@
 // backend/routes/inventoryRoutes.js
 const express = require('express');
 const router = express.Router();
-const inventoryController = require('../controller/InventoryController');
-const inventoryGroupController = require('../controller/InventoryGroupController');
+const inventoryController = require('../controllers/InventoryController');
+const inventoryGroupController = require('../controllers/InventoryGroupController');
 
 // Inventory routes
 router.get('/admin/inventory/stats', inventoryController.getInventoryStats);

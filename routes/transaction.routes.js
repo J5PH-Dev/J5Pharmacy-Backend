@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const transactionController = require('../controller/transaction.controller');
+const transactionController = require('../controllers/transaction.controller');
 const { verifyToken, isPMSUser } = require('../middleware/auth.middleware');
 
 // Report endpoints

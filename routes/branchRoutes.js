@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const branchController = require('../controller/branchController');
+const branchController = require('../controllers/branchController');
 const { verifyToken } = require('../middleware/auth.middleware');
 
 // All routes require authentication

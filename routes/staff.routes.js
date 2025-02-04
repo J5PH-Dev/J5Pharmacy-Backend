@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const staffController = require('../controller/staff.controller');
+const staffController = require('../controllers/staff.controller');
 const { verifyToken, isPMSUser } = require('../middleware/auth.middleware');
 const multer = require('multer');
 

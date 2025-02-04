@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const authController = require('../controller/auth.controller');
+const authController = require('../controllers/auth.controller');
 const { verifyToken, isPharmacist } = require('../middleware/auth.middleware');
 
 // PMS Login route (Admin/Manager)

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const devController = require('../controller/dev.controller');
+const devController = require('../controllers/dev.controller');
 const { verifyToken, isPMSUser } = require('../middleware/auth.middleware');
 
 // Only enable these routes in development environment

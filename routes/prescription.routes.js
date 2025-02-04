@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const prescriptionController = require('../controller/prescription.controller');
+const prescriptionController = require('../controllers/prescription.controller');
 
 // Configure multer for handling file uploads
 const storage = multer.memoryStorage(); // Store file in memory as Buffer

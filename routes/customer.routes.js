@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const customerController = require('../controller/customer.controller');
+const customerController = require('../controllers/customer.controller');
 
 // Get archived customers - move this before the :customer_id routes to prevent conflict
 router.get('/archived', customerController.getArchivedCustomers);

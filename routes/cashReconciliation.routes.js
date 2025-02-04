@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const cashReconciliationController = require('../controller/cashReconciliation.controller');
+const cashReconciliationController = require('../controllers/cashReconciliation.controller');
 const { verifyToken, isPharmacist } = require('../middleware/auth.middleware');
 
 // Get session summary for reconciliation

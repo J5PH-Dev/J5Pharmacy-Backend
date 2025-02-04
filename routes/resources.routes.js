@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const resourcesController = require('../controller/resources.controller');
+const resourcesController = require('../controllers/resources.controller');
 const { verifyToken, isPMSUser } = require('../middleware/auth.middleware');
 
 // Apply middleware to all routes
