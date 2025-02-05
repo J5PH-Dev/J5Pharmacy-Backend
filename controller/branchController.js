@@ -568,7 +568,29 @@ const branchController = {
             console.error('Error exporting archived branches:', error);
             res.status(500).json({ message: 'Failed to export archived branches' });
         }
-    }
+    },
+
+    deleteBranch: async (req, res) => {
+        const connection = await db.pool.getConnection();
+        const { branchId } = req.params;
+        try {
+            await connection.beginTransaction();
+    
+            console.log('Received branchId:', branchId);  // Debugging log
+    
+            // Update is_deleted status
+            await connection.query('UPDATE branches_archive SET is_deleted = 1 WHERE branch_id = ?', [branchId]);
+    
+            await connection.commit();
+            res.status(200).send({ message: 'Branch deleted successfully' });
+        } catch (error) {
+            await connection.rollback();
+            console.error('Error deleting branch:', error);
+            res.status(500).send({ message: 'Failed to delete branch' });
+        } finally {
+            connection.release();
+        }
+    },
 };
 
 module.exports = branchController; 

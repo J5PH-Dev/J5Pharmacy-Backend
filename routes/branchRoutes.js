@@ -38,4 +38,7 @@ router.post('/bulk-restore-branches', branchController.bulkRestoreArchivedBranch
 router.get('/export-branches', branchController.exportBranches);
 router.get('/export-archived-branches', branchController.exportArchivedBranches);
 
+// Delete Archive routes
+router.post('/deleteBranch/:branchId', branchController.deleteBranch);
+
 module.exports = router;
