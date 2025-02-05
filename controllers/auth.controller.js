@@ -100,8 +100,8 @@ const posLogin = async (req, res) => {
         // Get pharmacist from database with branch name
         const [pharmacists] = await db.pool.query(
             `SELECT p.*, b.branch_name,
-             ${getConvertTZString('p.created_at')} as created_at,
-             ${getConvertTZString('p.updated_at')} as updated_at
+             p.created_at as created_at,
+             p.updated_at as updated_at
              FROM pharmacist p 
              JOIN branches b ON p.branch_id = b.branch_id 
              WHERE p.pin_code = ? AND p.is_active = 1`,
