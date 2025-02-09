@@ -4,27 +4,29 @@ const timeZoneUtil = require('../utils/timeZoneUtil');
 // Fetch medicine groups and counts dynamically
 exports.getMedicineGroups = async (req, res) => {
     try {
-        // Get all categories with product counts using LEFT JOIN
+        // Use the working query directly
         const [categories] = await db.query(`
             SELECT 
                 c.category_id,
                 c.name,
                 c.prefix,
-                COALESCE(COUNT(CASE WHEN p.is_active = 1 THEN p.id END), 0) as product_count
+                COUNT(p.id) as product_count
             FROM category c
             LEFT JOIN products p ON p.category = c.category_id AND p.is_active = 1
+            WHERE c.is_active = 1
             GROUP BY c.category_id, c.name, c.prefix
             ORDER BY c.name ASC
         `);
 
-        // Map the results
+        // Map the results to ensure proper number formatting
         const result = categories.map(category => ({
             category_id: category.category_id,
             name: category.name,
             prefix: category.prefix,
-            product_count: parseInt(category.product_count) || 0
+            product_count: Number(category.product_count) || 0
         }));
 
+        console.log('Categories with counts:', result);
         res.status(200).json(result);
     } catch (error) {
         console.error('Error fetching medicine groups:', error);
@@ -238,37 +240,29 @@ exports.saveMedicineGroup = async (req, res) => {
 exports.getMedicinesAndStock = async (req, res) => {
     const { groupName } = req.params;
 
-    // Category mapping
-    const categoryMapping = {
-        'BRANDED': 1,
-        'GENERIC': 2,
-        'COSMETICS': 3,
-        'DIAPER': 4,
-        'FACE AND BODY': 5,
-        'GALENICALS': 6,
-        'MILK': 7,
-        'PILLS AND CONTRACEPTIVES': 8,
-        'SYRUP': 9,
-        'OTHERS': 10,
-    };
-
-    // Map groupName to category number
-    const categoryNumber = categoryMapping[groupName];
-
-    // If the category is not valid, return an error
-    if (!categoryNumber) {
-        return res.status(400).json({ message: 'Invalid groupName' });
-    }
-
     try {
-        // Fetch medicines for the specified category
-        const [medicines] = await db.query(
-            `SELECT name AS medicine_name, stock 
-            FROM products 
-            WHERE category = ?`,
-            [categoryNumber]
+        // First get the category_id for the given group name
+        const [category] = await db.query(
+            'SELECT category_id FROM category WHERE name = ? AND is_active = 1',
+            [groupName]
         );
 
+        if (category.length === 0) {
+            return res.status(400).json({ message: 'Invalid or inactive category' });
+        }
+
+        // Fetch medicines for the specified category
+        const [medicines] = await db.query(
+            `SELECT 
+                name AS medicine_name, 
+                stock,
+                barcode
+            FROM products 
+            WHERE category = ? AND is_active = 1`,
+            [category[0].category_id]
+        );
+
+        console.log(`Fetched ${medicines.length} medicines for category ${groupName}`); // For debugging
         res.status(200).json(medicines);
     } catch (error) {
         console.error('Error fetching medicines:', error);
@@ -394,7 +388,7 @@ exports.archiveCategory = async (req, res) => {
         return res.status(400).json({ message: 'Cannot archive NO CATEGORY as it is a system category' });
     }
 
-    const connection = await db.getConnection();
+    const connection = await db.pool.getConnection();
     try {
         await connection.beginTransaction();
 
