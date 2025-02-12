@@ -37,4 +37,10 @@ router.patch('/sessions/:sessionId', verifyToken, isPharmacist, posController.cl
 router.get('/customers/by-card/:cardId', verifyToken, isPharmacist, posController.getCustomerByCard);
 router.post('/customers', verifyToken, isPharmacist, posController.createCustomerWithCard);
 
+// Add this route
+router.get('/generate-invoice-number', verifyToken, isPharmacist, posController.generateInvoiceNumber);
+
+// Stock Checking
+router.get('/search/stock/:branchId/:productId', posController.getProductStock);
+
 module.exports = router; 

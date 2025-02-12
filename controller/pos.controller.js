@@ -265,18 +265,27 @@ const completeTransaction = async (req, res) => {
       pharmacistSessionId,
       customerName,
       starPointsId,
-      discountType = 'None',
-      discountAmount = 0,
+      discountType,
+      discountAmount,
       discountIdNumber,
-      paymentMethod,
-      items,
+      paymentMethod = 'CASH',
+      items = [],
       subtotal,
       discountedSubtotal,
       vat,
       total,
       amountTendered,
-      change
+      change,
+      pointsUsed = 0,
+      referenceNumber = null
     } = req.body;
+
+    console.log('Transaction details:', {
+      paymentMethod,
+      amountTendered,
+      total,
+      items: items.length
+    });
 
     // Generate invoice number
     const [branch] = await connection.query(
@@ -305,26 +314,71 @@ const completeTransaction = async (req, res) => {
     const dailySequence = sequence[0].next_sequence.toString().padStart(4, '0');
     const invoiceNumber = `${branchCode}-${formattedDate}-${time}-${dailySequence}`;
 
-    // Calculate points earned (example: 1 point per 100 pesos)
-    const pointsEarned = Math.floor(subtotal / 200);
+    // Calculate points earned (1:200 ratio)
+    const pointsEarned = Math.round((subtotal / 200) * 100) / 100;
 
-    // Handle points redemption
-    if (discountType === 'Points') {
-      const [points] = await connection.query(
-        'SELECT points_balance FROM star_points WHERE customer_id = ?',
-        [req.body.customerId]
+    // Get customer_id and star_points_id
+    let customerId = null;
+    let starPointsRecordId = null;
+
+    if (starPointsId && starPointsId !== '001') {
+      const [customer] = await connection.query(
+        `SELECT c.customer_id, sp.star_points_id, sp.points_balance 
+         FROM customers c
+         LEFT JOIN star_points sp ON c.customer_id = sp.customer_id
+         WHERE c.card_id = ?`,
+        [starPointsId]
       );
-      
-      const maxRedeemable = Math.floor(subtotal / 100);
-      const pointsToRedeem = Math.min(points[0].points_balance, maxRedeemable);
-      
-      await connection.query(
-        'UPDATE star_points SET points_balance = points_balance - ? WHERE customer_id = ?',
-        [pointsToRedeem, req.body.customerId]
-      );
+
+      if (customer.length > 0) {
+        customerId = customer[0].customer_id;
+        starPointsRecordId = customer[0].star_points_id;
+
+        // Handle points redemption if using points discount
+        if (discountType === 'Points' && pointsUsed > 0) {
+          // Update star_points balance
+          await connection.query(
+            `UPDATE star_points 
+             SET points_balance = points_balance - ?,
+                 total_points_redeemed = total_points_redeemed + ?,
+                 updated_at = ${getMySQLTimestamp()}
+             WHERE star_points_id = ?`,
+            [pointsUsed, pointsUsed, starPointsRecordId]
+          );
+
+          // Record points redemption transaction
+          await connection.query(
+            `INSERT INTO star_points_transactions 
+             (star_points_id, points_amount, transaction_type, reference_transaction_id, created_at)
+             VALUES (?, ?, 'REDEEMED', ?, ${getMySQLTimestamp()})`,
+            [starPointsRecordId, pointsUsed, invoiceNumber]
+          );
+        }
+
+        // Add earned points
+        if (pointsEarned > 0) {
+          // Update star_points balance
+          await connection.query(
+            `UPDATE star_points 
+             SET points_balance = points_balance + ?,
+                 total_points_earned = total_points_earned + ?,
+                 updated_at = ${getMySQLTimestamp()}
+             WHERE star_points_id = ?`,
+            [pointsEarned, pointsEarned, starPointsRecordId]
+          );
+
+          // Record points earned transaction
+          await connection.query(
+            `INSERT INTO star_points_transactions 
+             (star_points_id, points_amount, transaction_type, reference_transaction_id, created_at)
+             VALUES (?, ?, 'EARNED', ?, ${getMySQLTimestamp()})`,
+            [starPointsRecordId, pointsEarned, invoiceNumber]
+          );
+        }
+      }
     }
 
-    // Insert sale
+    // Insert sale with payment status
     const [saleResult] = await connection.query(
       `INSERT INTO sales SET 
         invoice_number = ?,
@@ -334,6 +388,7 @@ const completeTransaction = async (req, res) => {
         discount_type = ?,
         discount_id_number = ?,
         payment_method = ?,
+        payment_status = ?,
         branch_id = ?,
         pharmacist_session_id = ?,
         points_earned = ?,
@@ -342,16 +397,17 @@ const completeTransaction = async (req, res) => {
         daily_sequence = ?`,
       [
         invoiceNumber,
-        req.body.customerId,
-        total,
-        discountAmount,
-        discountType,
-        discountIdNumber,
-        paymentMethod,
+        customerId || 1,
+        total || 0,
+        discountAmount || 0,
+        discountType || 'None',
+        discountIdNumber || null,
+        (paymentMethod || 'CASH').toLowerCase(),
+        'paid', // Set initial payment status
         branchId,
         pharmacistSessionId,
-        pointsEarned,
-        discountType === 'Points' ? pointsToRedeem : 0,
+        pointsEarned || 0,
+        pointsUsed || 0,
         dailySequence
       ]
     );
@@ -359,26 +415,33 @@ const completeTransaction = async (req, res) => {
     const saleId = saleResult.insertId;
 
     // Insert sale items and update inventory
-    for (const item of items) {
-      await connection.query(
-        `INSERT INTO sale_items SET 
-          sale_id = ?,
-          product_id = ?,
-          quantity = ?,
-          unit_price = ?,
-          total_price = ?`,
-        [saleId, item.product_id, item.quantity, item.unit_price, item.subtotal]
-      );
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        await connection.query(
+          `INSERT INTO sale_items SET 
+            sale_id = ?,
+            product_id = ?,
+            quantity = ?,
+            unit_price = ?,
+            total_price = ?`,
+          [saleId, item.product_id, item.quantity, item.unit_price, item.subtotal]
+        );
 
-      await connection.query(
-        `UPDATE branch_inventory 
-         SET stock = stock - ?
-         WHERE branch_id = ? AND product_id = ?`,
-        [item.quantity, branchId, item.product_id]
-      );
+        await connection.query(
+          `UPDATE branch_inventory 
+           SET stock = stock - ?
+           WHERE branch_id = ? AND product_id = ?`,
+          [item.quantity, branchId, item.product_id]
+        );
+      }
     }
 
-    // Insert payment
+    // Insert payment with proper validation
+    const paymentAmount = parseFloat(amountTendered);
+    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+      throw new Error('Invalid payment amount');
+    }
+
     await connection.query(
       `INSERT INTO sales_payments SET 
         sale_id = ?,
@@ -386,7 +449,12 @@ const completeTransaction = async (req, res) => {
         amount = ?,
         reference_number = ?,
         created_at = ${getMySQLTimestamp()}`,
-      [saleId, paymentMethod, amountTendered, null]
+      [
+        saleId, 
+        paymentMethod.toLowerCase(), 
+        paymentAmount,
+        referenceNumber
+      ]
     );
 
     // Update sales session
@@ -399,7 +467,13 @@ const completeTransaction = async (req, res) => {
 
     await connection.commit();
     
-    console.log(`Transaction completed: ${invoiceNumber}`);
+    console.log('Transaction completed successfully:', {
+      invoiceNumber,
+      saleId,
+      paymentMethod,
+      amountTendered: paymentAmount,
+      total
+    });
     
     res.json({
       success: true,
@@ -413,9 +487,9 @@ const completeTransaction = async (req, res) => {
     await connection.rollback();
     console.error('Error completing transaction:', error);
     res.status(500).json({ 
-      success: false,
-      message: 'Failed to complete transaction',
-      error: error.message
+      success: false, 
+      message: 'Error completing transaction',
+      error: error.message 
     });
   } finally {
     connection.release();
@@ -491,84 +565,97 @@ const searchByBarcode = async (req, res) => {
 };
 
 const createPrescription = async (req, res) => {
-    const connection = await db.pool.getConnection();
-    try {
-        await connection.beginTransaction();
+  const connection = await db.pool.getConnection();
+  try {
+    await connection.beginTransaction();
 
-        const {
-            patientName,
-            age,
-            doctorName,
-            prcNumber,
-            prescriptionDate,
-            prescriptionNumber,
-            diagnosis,
-            notes,
-            items // array of prescribed items
-        } = req.body;
+    const {
+      customerId,
+      doctorName,
+      licenseNumber,
+      prescriptionDate,
+      expiryDate,
+      notes,
+      items
+    } = req.body;
 
-        // Insert into prescriptions table
-        const [result] = await connection.query(
-            `INSERT INTO prescriptions (
-                patient_name,
-                patient_age,
-                doctor_name,
-                prc_number,
-                prescription_date,
-                prescription_number,
-                diagnosis,
-                notes,
-                created_at,
-                pharmacist_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ${getMySQLTimestamp()}, ?)`,
-            [
-                patientName,
-                age,
-                doctorName,
-                prcNumber,
-                prescriptionDate,
-                prescriptionNumber,
-                diagnosis,
-                notes,
-                req.user.id // from auth middleware
-            ]
-        );
-
-        const prescriptionId = result.insertId;
-
-        // Insert prescribed items
-        if (items && items.length > 0) {
-            for (const item of items) {
-                await connection.query(
-                    `INSERT INTO prescription_items (
-                        prescription_id,
-                        product_id,
-                        quantity,
-                        instructions
-                    ) VALUES (?, ?, ?, ?)`,
-                    [prescriptionId, item.productId, item.quantity, item.instructions]
-                );
-            }
-        }
-
-        await connection.commit();
-        console.log('Prescription created:', prescriptionId);
-
-        res.json({
-            success: true,
-            prescriptionId,
-            message: 'Prescription created successfully'
-        });
-    } catch (error) {
-        await connection.rollback();
-        console.error('Error creating prescription:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to create prescription'
-        });
-    } finally {
-        connection.release();
+    // Handle image upload
+    let imageData = null;
+    let imageType = null;
+    if (req.files && req.files.image) {
+      const file = req.files.image;
+      imageData = file.data;
+      imageType = file.mimetype.split('/')[1].toUpperCase();
     }
+
+    // Insert prescription
+    const [result] = await connection.query(
+      `INSERT INTO prescriptions SET
+        customer_id = ?,
+        doctor_name = ?,
+        doctor_license_number = ?,
+        prescription_date = ?,
+        expiry_date = ?,
+        notes = ?,
+        image_data = ?,
+        image_type = ?,
+        image_upload_date = ${getMySQLTimestamp()},
+        status = 'ACTIVE',
+        created_at = ${getMySQLTimestamp()},
+        updated_at = ${getMySQLTimestamp()}`,
+      [
+        customerId,
+        doctorName,
+        licenseNumber,
+        prescriptionDate,
+        expiryDate,
+        notes,
+        imageData,
+        imageType
+      ]
+    );
+
+    // Insert prescription items
+    for (const item of items) {
+      await connection.query(
+        `INSERT INTO prescription_items SET
+          prescription_id = ?,
+          product_id = ?,
+          prescribed_quantity = ?,
+          dispensed_quantity = 0,
+          dosage_instructions = ?,
+          created_at = ${getMySQLTimestamp()},
+          updated_at = ${getMySQLTimestamp()}`,
+        [
+          result.insertId,
+          item.id,
+          item.quantity,
+          item.dosage_instructions || null
+        ]
+      );
+    }
+
+    await connection.commit();
+    
+    console.log('Prescription created:', {
+      prescriptionId: result.insertId,
+      items: items.length
+    });
+
+    res.json({
+      success: true,
+      prescriptionId: result.insertId
+    });
+  } catch (error) {
+    await connection.rollback();
+    console.error('Error creating prescription:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating prescription'
+    });
+  } finally {
+    connection.release();
+  }
 };
 
 const getTransactionById = async (req, res) => {
@@ -633,81 +720,71 @@ const processReturn = async (req, res) => {
         await connection.beginTransaction();
 
         const {
-            transactionId,
-            items,
-            reason,
+            originalInvoiceNumber,
+            returnItems,
+            returnReason,
             pharmacistSessionId
         } = req.body;
 
-        // Calculate total return amount
-        const totalAmount = items.reduce((sum, item) => 
-            sum + (item.returnQuantity * item.price), 0
+        console.log('Processing return:', {
+            invoice: originalInvoiceNumber,
+            itemCount: returnItems.length,
+            reason: returnReason
+        });
+
+        // Get original sale
+        const [sale] = await connection.query(
+            `SELECT * FROM sales WHERE invoice_number = ?`,
+            [originalInvoiceNumber]
         );
 
-        // Insert into sales_returns table
-        const [result] = await connection.query(
-            `INSERT INTO sales_returns (
-                sale_id,
-                product_id,
-                quantity,
-                reason,
-                refund_amount,
-                pharmacist_id,
-                created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ${getMySQLTimestamp()})`,
-            [transactionId, item.productId, item.returnQuantity, reason, item.price * item.returnQuantity, pharmacistSessionId]
+        if (!sale.length) {
+            throw new Error('Original sale not found');
+        }
+
+        // Calculate return amount
+        const returnAmount = returnItems.reduce(
+            (sum, item) => sum + (item.price * item.returnQuantity),
+            0
         );
-        console.log('Sales return recorded:', { transactionId, item });
 
+        // Create return record
+        const [returnResult] = await connection.query(
+            `INSERT INTO returns 
+             (original_sale_id, return_amount, reason, 
+              pharmacist_session_id, status, created_at)
+             VALUES (?, ?, ?, ?, 'PENDING', ${getMySQLTimestamp()})`,
+            [sale[0].id, returnAmount, returnReason, pharmacistSessionId]
+        );
 
-        const returnId = result.insertId;
-
-        // Process each returned item
-        for (const item of items) {
-            if (item.returnQuantity > 0) {
-                // Insert return items
-                await connection.query(
-                    `INSERT INTO return_items (
-                        return_id,
-                        product_id,
-                        quantity,
-                        unit_price,
-                        subtotal
-                    ) VALUES (?, ?, ?, ?, ?)`,
-                    [
-                        returnId,
-                        item.productId,
-                        item.returnQuantity,
-                        item.price,
-                        item.returnQuantity * item.price
-                    ]
-                );
-
-                // Update inventory
-                await connection.query(
-                    `UPDATE branch_inventory 
-                     SET stock = stock + ?,
-                         updatedAt = ${getMySQLTimestamp()}
-                     WHERE branch_id = ? AND product_id = ?`,
-                    [item.returnQuantity, req.user.branchId, item.productId]
-                );
-            }
+        // Insert return items
+        for (const item of returnItems) {
+            await connection.query(
+                `INSERT INTO return_items 
+                 (return_id, product_id, quantity, unit_price)
+                 VALUES (?, ?, ?, ?)`,
+                [returnResult.insertId, item.id, item.returnQuantity, item.price]
+            );
         }
 
         await connection.commit();
-        console.log('Return processed:', returnId);
+
+        console.log('Return processed successfully:', {
+            returnId: returnResult.insertId,
+            amount: returnAmount
+        });
 
         res.json({
             success: true,
-            returnId,
-            message: 'Return processed successfully'
+            message: 'Return processed successfully',
+            returnId: returnResult.insertId
         });
     } catch (error) {
         await connection.rollback();
         console.error('Error processing return:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to process return'
+            message: 'Error processing return'
         });
     } finally {
         connection.release();
@@ -831,18 +908,22 @@ const getHeldTransactionItems = async (req, res) => {
 const getCustomerByCard = async (req, res) => {
   try {
     const { cardId } = req.params;
+    console.log('Searching for customer with card:', cardId);
+    
     const [customer] = await db.pool.query(
       `SELECT c.*, sp.points_balance 
        FROM customers c
-       JOIN star_points sp ON c.customer_id = sp.customer_id
-       WHERE sp.card_id = ?`,
+       LEFT JOIN star_points sp ON c.customer_id = sp.customer_id
+       WHERE c.card_id = ?`,
       [cardId]
     );
     
     if (customer.length === 0) {
+      console.log('No customer found with card:', cardId);
       return res.status(404).json({ success: false, message: 'Customer not found' });
     }
     
+    console.log('Customer found:', customer[0]);
     res.json({ success: true, data: customer[0] });
   } catch (error) {
     console.error('Error fetching customer:', error);
@@ -857,33 +938,45 @@ const createCustomerWithCard = async (req, res) => {
     
     const { name, phone, address, discountType, discountId, cardId } = req.body;
     
-    // Create customer
+    // Insert customer with card_id
     const [customerResult] = await connection.query(
-      `INSERT INTO customers SET 
-        name = ?,
-        phone = ?,
-        address = ?,
-        discount_type = ?,
-        discount_id_number = ?,
-        created_at = ${getMySQLTimestamp()}`,
-      [name, phone, address, discountType, discountId]
+      `INSERT INTO customers (
+        name, phone, address, 
+        discount_type, discount_id_number, card_id,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ${getMySQLTimestamp()}, ${getMySQLTimestamp()})`,
+      [name, phone, address, discountType, discountId, cardId]
     );
     
-    // Create star points account
+    // Initialize star points
     await connection.query(
-      `INSERT INTO star_points SET 
-        customer_id = ?,
-        card_id = ?,
-        points_balance = 0,
-        created_at = ${getMySQLTimestamp()}`,
-      [customerResult.insertId, cardId]
+      `INSERT INTO star_points (
+        customer_id, points_balance, total_points_earned,
+        total_points_redeemed, created_at, updated_at
+      ) VALUES (?, 0, 0, 0, ${getMySQLTimestamp()}, ${getMySQLTimestamp()})`,
+      [customerResult.insertId]
+    );
+    
+    // Get the complete customer data
+    const [customer] = await connection.query(
+      `SELECT c.*, sp.points_balance 
+       FROM customers c
+       LEFT JOIN star_points sp ON c.customer_id = sp.customer_id
+       WHERE c.customer_id = ?`,
+      [customerResult.insertId]
     );
     
     await connection.commit();
+    
+    console.log('Customer created:', {
+      customerId: customerResult.insertId,
+      cardId: cardId,
+      customerData: customer[0]
+    });
+    
     res.json({ 
       success: true,
-      customerId: customerResult.insertId,
-      cardId
+      data: customer[0]
     });
   } catch (error) {
     await connection.rollback();
@@ -891,6 +984,87 @@ const createCustomerWithCard = async (req, res) => {
     res.status(500).json({ success: false, message: 'Error creating customer' });
   } finally {
     connection.release();
+  }
+};
+
+const generateInvoiceNumber = async (req, res) => {
+  const connection = await db.pool.getConnection();
+  try {
+    const { branchId } = req.query;
+    
+    // Get branch code
+    const [branch] = await connection.query(
+      'SELECT branch_code FROM branches WHERE branch_id = ?',
+      [branchId]
+    );
+    
+    const branchCode = branch[0].branch_code;
+    
+    // Get current date components
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const year = String(now.getFullYear()).slice(-2);
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    
+    // Get daily sequence
+    const [sequence] = await connection.query(
+      `SELECT COALESCE(MAX(daily_sequence), 0) + 1 as next_sequence 
+       FROM sales 
+       WHERE branch_id = ? AND DATE(created_at) = CURDATE()`,
+      [branchId]
+    );
+    
+    const dailySequence = String(sequence[0].next_sequence).padStart(4, '0');
+    
+    // Format: J5P-B001-021025-0507-0002 (removed duplicate J5P)
+    const invoiceNumber = `${branchCode}-${month}${day}${year}-${hours}${minutes}-${dailySequence}`;
+    
+    console.log('Generated invoice number:', invoiceNumber);
+    res.json({ success: true, invoiceNumber });
+  } catch (error) {
+    console.error('Error generating invoice number:', error);
+    res.status(500).json({ success: false, message: 'Error generating invoice number' });
+  } finally {
+    connection.release();
+  }
+};
+
+const getProductStock = async (req, res) => {
+  try {
+    const { branchId, productId } = req.params;
+    
+    const [stock] = await db.pool.query(
+      `SELECT stock 
+       FROM branch_inventory 
+       WHERE branch_id = ? AND product_id = ?`,
+      [branchId, productId]
+    );
+
+    if (stock.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Stock not found for this product' 
+      });
+    }
+
+    console.log('Stock check:', {
+      branchId,
+      productId,
+      stock: stock[0].stock
+    });
+
+    res.json({ 
+      success: true, 
+      stock: stock[0].stock 
+    });
+  } catch (error) {
+    console.error('Error checking stock:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error checking stock' 
+    });
   }
 };
 
@@ -913,5 +1087,7 @@ module.exports = {
     closeSalesSession,
     getHeldTransactionItems,
     getCustomerByCard,
-    createCustomerWithCard
+    createCustomerWithCard,
+    generateInvoiceNumber,
+    getProductStock
 }; 

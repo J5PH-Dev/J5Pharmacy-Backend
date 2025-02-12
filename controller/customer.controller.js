@@ -277,8 +277,8 @@ const getCustomerDetails = async (req, res) => {
             `SELECT 
                 customer_id, name, phone, email, address, 
                 discount_type, discount_id_number, card_id,
-                ${getConvertTZString('created_at')} as created_at,
-                ${getConvertTZString('updated_at')} as updated_at
+                created_at as created_at,
+                updated_at as updated_at
              FROM customers 
              WHERE customer_id = ? AND is_archived = 0`,
             [customer_id]
@@ -300,8 +300,8 @@ const getCustomerDetails = async (req, res) => {
                 points_balance,
                 total_points_earned,
                 total_points_redeemed,
-                ${getConvertTZString('created_at')} as created_at,
-                ${getConvertTZString('updated_at')} as updated_at
+                created_at as created_at,
+                updated_at as updated_at
              FROM star_points 
              WHERE customer_id = ?`,
             [customer_id]
@@ -314,7 +314,7 @@ const getCustomerDetails = async (req, res) => {
                 points_amount,
                 transaction_type,
                 reference_transaction_id,
-                ${getConvertTZString('created_at')} as created_at
+                created_at as created_at
              FROM star_points_transactions 
              WHERE star_points_id = ?
              ORDER BY created_at DESC`,
@@ -327,13 +327,13 @@ const getCustomerDetails = async (req, res) => {
                 p.prescription_id,
                 p.doctor_name,
                 p.doctor_license_number,
-                DATE(${getConvertTZString('p.prescription_date')}) as prescription_date,
-                DATE(${getConvertTZString('p.expiry_date')}) as expiry_date,
+                p.prescription_date as prescription_date,
+                p.expiry_date as expiry_date,
                 p.notes,
                 p.status,
                 p.image_data,
-                ${getConvertTZString('p.created_at')} as created_at,
-                ${getConvertTZString('p.updated_at')} as updated_at
+                p.created_at as created_at,
+                p.updated_at as updated_at
              FROM prescriptions p
              WHERE p.customer_id = ?
              ORDER BY p.prescription_date DESC`,
@@ -449,9 +449,10 @@ const updateCustomer = async (req, res) => {
             `SELECT 
                 customer_id, name, phone, email, address, 
                 discount_type, discount_id_number,
-                ${getConvertTZString('created_at')} as created_at,
-                ${getConvertTZString('updated_at')} as updated_at
+                created_at as created_at,
+                updated_at as updated_at
              FROM customers 
+
              WHERE customer_id = ?`,
             [customer_id]
         );
@@ -491,11 +492,13 @@ const archiveCustomer = async (req, res) => {
              SET is_archived = 1,
                  archive_reason = ?,
                  archived_by = ?,
-                 archived_at = NOW(),
-                 updated_at = NOW()
+                 archived_at = ${getMySQLTimestamp()},
+                 updated_at = ${getMySQLTimestamp()}
              WHERE customer_id = ?`,
             [archive_reason, archived_by, customer_id]
         );
+
+        console.log(`Customer archived - ID: ${customer_id}, Reason: ${archive_reason}, By: ${archived_by}`);
 
         res.json({
             success: true,
@@ -528,11 +531,13 @@ const bulkArchiveCustomers = async (req, res) => {
              SET is_archived = 1,
                  archive_reason = ?,
                  archived_by = ?,
-                 archived_at = NOW(),
-                 updated_at = NOW()
+                 archived_at = ${getMySQLTimestamp()},
+                 updated_at = ${getMySQLTimestamp()}
              WHERE customer_id IN (?)`,
             [archive_reason, archived_by, customer_ids]
         );
+
+        console.log(`Bulk archive customers - IDs: ${customer_ids.join(', ')}, Reason: ${archive_reason}, By: ${archived_by}`);
 
         res.json({
             success: true,
@@ -610,10 +615,12 @@ const restoreCustomer = async (req, res) => {
                  archive_reason = NULL,
                  archived_by = NULL,
                  archived_at = NULL,
-                 updated_at = NOW()
+                 updated_at = ${getMySQLTimestamp()}
              WHERE customer_id = ?`,
             [customer_id]
         );
+
+        console.log(`Customer restored - ID: ${customer_id}`);
 
         res.json({
             success: true,

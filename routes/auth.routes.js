@@ -14,10 +14,7 @@ router.post('/forgot-password', authController.forgotPassword);
 router.post('/verify-reset-token', authController.verifyResetToken);
 router.post('/reset-password', authController.resetPassword);
 
-// End pharmacist session
-router.post('/pos/end-session', verifyToken, isPharmacist, authController.endPharmacistSession);
-
-// Add this new route for ending pharmacist session
+// End pharmacist session - only need one route
 router.post('/end-pharmacist-session', verifyToken, isPharmacist, authController.endPharmacistSession);
 
 module.exports = router; 
