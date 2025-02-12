@@ -614,21 +614,26 @@ const processBulkImport = async (req, res) => {
 
         for (const product of products) {
             if (product.status === 'matched') {
+
                 // Get the product_id from matchedProduct
                 const product_id = product.matchedProduct.id;
-                
+
                 // Check if branch inventory exists
                 const [existingInventory] = await connection.query(
                     `SELECT inventory_id, stock 
                      FROM branch_inventory 
                      WHERE product_id = ? AND branch_id = ? AND is_active = 1`,
+
                     [product_id, branch_id]
+
                 );
 
                 if (existingInventory.length > 0) {
                     console.log('Updating existing inventory:', {
                         inventory_id: existingInventory[0].inventory_id,
+
                         product_id: product_id,
+
                         old_stock: existingInventory[0].stock,
                         new_stock: product.quantity,
                         updated_by: userId
@@ -644,7 +649,7 @@ const processBulkImport = async (req, res) => {
                     );
 
                     // Add inventory history record
-                    await connection.query(
+                await connection.query(
                         `INSERT INTO inventory_history 
                          (inventory_id, transaction_type, quantity, previous_stock, 
                           current_stock, expiry_date, remarks, created_at, created_by)
@@ -662,10 +667,12 @@ const processBulkImport = async (req, res) => {
                 } else {
                     // Create new branch inventory record
                     const [result] = await connection.query(
+
                         `INSERT INTO branch_inventory 
                          (branch_id, product_id, stock, expiryDate, is_active, createdAt, updatedAt)
                          VALUES (?, ?, ?, ?, 1, ${getMySQLTimestamp()}, ${getMySQLTimestamp()})`,
                         [branch_id, product_id, product.quantity, product.expiry]
+
                     );
 
                     // Add inventory history record
@@ -685,6 +692,7 @@ const processBulkImport = async (req, res) => {
                     );
                 }
             } else if (product.status === 'new') {
+
                 // Get category_id or use NO CATEGORY (11) as default
                 let category_id = 11; // Default to NO CATEGORY
                 if (product.category) {
@@ -696,8 +704,8 @@ const processBulkImport = async (req, res) => {
                         category_id = categoryResult[0].category_id;
                     }
                 }
-
-                // Handle new product creation
+              
+ Handle new product creation
                 const [result] = await connection.query(
                     `INSERT INTO products (
                         barcode, name, brand_name, category, 
@@ -1018,3 +1026,4 @@ module.exports = {
     bulkArchiveSuppliers,
     bulkRestoreSuppliers
 }; 
+

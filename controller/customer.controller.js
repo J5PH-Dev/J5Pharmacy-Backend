@@ -280,7 +280,7 @@ const getCustomerDetails = async (req, res) => {
                 created_at as created_at,
                 updated_at as updated_at
              FROM customers 
-             WHERE customer_id = ? AND is_archived = 0`,
+             WHERE customer_id = ?`,
             [customer_id]
         );
 
@@ -636,6 +636,39 @@ const restoreCustomer = async (req, res) => {
     }
 };
 
+const deleteArchivedCustomer = async (req, res) => {
+    try {
+        const { customer_id } = req.params;
+        console.log(`Deleting customer with ID: ${customer_id}`);
+
+        const result = await db.pool.query(
+            `UPDATE customers 
+             SET is_archived = 2
+             WHERE customer_id = ?`,
+            [customer_id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Customer not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Customer deleted successfully'
+        });
+    } catch (error) {
+        console.error('Error deleting customer:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error deleting customer',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     getCustomers,
     searchCustomers,
@@ -645,5 +678,6 @@ module.exports = {
     bulkArchiveCustomers,
     getArchivedCustomers,
     restoreCustomer,
-    getCustomerDetails
-}; 
+    getCustomerDetails,
+    deleteArchivedCustomer
+};
