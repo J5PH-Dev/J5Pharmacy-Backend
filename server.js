@@ -13,9 +13,11 @@ const customerRoutes = require('./routes/customer.routes');
 const staffRoutes = require('./routes/staff.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const resourcesRoutes = require('./routes/resources.routes');
+const posRoutes = require('./routes/pos.routes');
 // const posProductRoutes = require('./routes/pos/pos.product.routes');
 // const posTransactionRoutes = require('./routes/pos/pos.transaction.routes');
 // const posSessionRoutes = require('./routes/pos/pos.session.routes');
+
 // const posInventoryRoutes = require('./routes/pos/pos.inventory.routes');
 // const posCustomerRoutes = require('./routes/pos/pos.customer.routes');
 const { initializeSocket } = require('./socket');
@@ -57,10 +59,12 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/resources', resourcesRoutes);
+app.use('/api/pos', posRoutes);
 // app.use('/api/pos/products', posProductRoutes);
 // app.use('/api/pos/transactions', posTransactionRoutes);
 // app.use('/api/pos/sessions', posSessionRoutes);
 // app.use('/api/pos/inventory', posInventoryRoutes);
+
 // app.use('/api/pos/customers', posCustomerRoutes);
 
 // Register dev routes

@@ -15,6 +15,7 @@ router.get('/admin/inventory/critical-products', inventoryController.getCritical
 router.get('/admin/inventory/archived-categories', inventoryController.getArchivedCategories);
 router.get('/admin/inventory/category-products/:categoryId', inventoryGroupController.getCategoryProducts);
 router.get('/admin/inventory/next-barcode/:categoryId', inventoryGroupController.getNextBarcode);
+router.get('/admin/inventory/view-medicines-availableByBranch', inventoryController.getMedicineAvailableByBranch);
 
 // POST routes
 router.post('/admin/inventory/add-medicine', inventoryController.addMedicine);

@@ -4,25 +4,46 @@ const timeZoneUtil = require('../utils/timeZoneUtil');
 // Fetch inventory counts dynamically
 exports.getInventoryStats = async (req, res) => {
     try {
-        // Get total active products
-        const [productsCount] = await db.query(
-            'SELECT COUNT(*) as count FROM products WHERE is_active = TRUE'
-        );
+        const { branch_id } = req.query;
 
-        // Get total categories
+        if (!branch_id) {
+            return res.status(400).json({ message: 'Branch ID is required' });
+        }
+
+        console.log('Getting inventory stats for branch:', branch_id);
+
+        // Get total active products for this branch
+        const [productsCount] = await db.query(`
+            SELECT COUNT(DISTINCT p.id) as count 
+            FROM products p
+            JOIN branch_inventory bi ON p.id = bi.product_id
+            WHERE p.is_active = TRUE 
+            AND bi.is_active = TRUE
+            AND bi.branch_id = ?
+        `, [branch_id]);
+
+        // Get total categories (this remains the same as categories are global)
         const [categoriesCount] = await db.query(
-            'SELECT COUNT(*) as count FROM category'
+            'SELECT COUNT(*) as count FROM category WHERE is_active = TRUE'
         );
 
-        // Get count of products with stock below critical level in any branch
+        // Get count of products with stock below critical level in this branch
         const [criticalCount] = await db.query(`
             SELECT COUNT(DISTINCT p.id) as count
             FROM products p
             JOIN branch_inventory bi ON p.id = bi.product_id
             WHERE p.is_active = TRUE 
             AND bi.is_active = TRUE
+            AND bi.branch_id = ?
             AND bi.stock <= p.critical
-        `);
+        `, [branch_id]);
+
+        console.log('Inventory stats retrieved:', {
+            branch_id,
+            productsAvailable: productsCount[0].count,
+            medicineGroups: categoriesCount[0].count,
+            medicineShortage: criticalCount[0].count
+        });
 
         res.json({
             productsAvailable: productsCount[0].count,
@@ -31,7 +52,10 @@ exports.getInventoryStats = async (req, res) => {
         });
     } catch (error) {
         console.error('Error getting inventory stats:', error);
-        res.status(500).json({ message: 'Error getting inventory stats' });
+        res.status(500).json({ 
+            message: 'Error getting inventory stats',
+            error: error.message 
+        });
     }
 };
 
@@ -1176,5 +1200,76 @@ exports.restoreProduct = async (req, res) => {
         res.status(500).json({ message: 'Failed to restore product', error });
     } finally {
         connection.release();
+    }
+};
+
+// Add this new controller function
+exports.getMedicineAvailableByBranch = async (req, res) => {
+    try {
+        const { 
+            orderBy = 'updatedAt', 
+            sortDirection = 'asc',
+            createdStartDate,
+            createdEndDate,
+            updatedStartDate,
+            updatedEndDate,
+            branch_id
+        } = req.query;
+        
+        if (!branch_id) {
+            return res.status(400).json({ message: 'Branch ID is required' });
+        }
+
+        const validColumns = ['name', 'brand_name', 'barcode', 'category', 'price', 'stock', 'createdAt'];
+        const sortColumn = validColumns.includes(orderBy) ? orderBy : 'updatedAt';
+        const direction = sortDirection === 'desc' ? 'DESC' : 'ASC';
+
+        let query = `
+            SELECT 
+                p.id as medicineID, 
+                p.name, 
+                p.brand_name, 
+                p.barcode, 
+                c.name as category,
+                p.price,
+                bi.stock,
+                bi.expiryDate,
+                ${timeZoneUtil.getConvertTZString('p.createdAt')} as createdAt,
+                ${timeZoneUtil.getConvertTZString('p.updatedAt')} as updatedAt
+            FROM products p
+            LEFT JOIN category c ON p.category = c.category_id
+            LEFT JOIN branch_inventory bi ON p.id = bi.product_id AND bi.branch_id = ? AND bi.is_active = TRUE
+            WHERE p.is_active = TRUE
+        `;
+
+        const queryParams = [branch_id];
+
+        // Add date filters if provided
+        if (createdStartDate) {
+            query += ` AND p.createdAt >= ?`;
+            queryParams.push(createdStartDate);
+        }
+        if (createdEndDate) {
+            query += ` AND p.createdAt <= ?`;
+            queryParams.push(createdEndDate);
+        }
+        if (updatedStartDate) {
+            query += ` AND p.updatedAt >= ?`;
+            queryParams.push(updatedStartDate);
+        }
+        if (updatedEndDate) {
+            query += ` AND p.updatedAt <= ?`;
+            queryParams.push(updatedEndDate);
+        }
+
+        query += ` ORDER BY ${sortColumn} ${direction}`;
+
+        console.log('Fetching products for branch:', branch_id);
+        const [products] = await db.query(query, queryParams);
+
+        res.json(products);
+    } catch (error) {
+        console.error('Error in getMedicineAvailableByBranch:', error);
+        res.status(500).json({ message: 'Internal server error' });
     }
 };

@@ -99,9 +99,7 @@ const posLogin = async (req, res) => {
 
         // Get pharmacist from database with branch name
         const [pharmacists] = await db.pool.query(
-            `SELECT p.*, b.branch_name,
-             ${getConvertTZString('p.created_at')} as created_at,
-             ${getConvertTZString('p.updated_at')} as updated_at
+            `SELECT p.*, b.branch_name, b.branch_code
              FROM pharmacist p 
              JOIN branches b ON p.branch_id = b.branch_id 
              WHERE p.pin_code = ? AND p.is_active = 1`,
@@ -132,7 +130,7 @@ const posLogin = async (req, res) => {
             const sessionId = salesSessionResult.insertId;
 
             // Create pharmacist session with timestamp
-            await db.pool.query(
+            const [pharmacistSessionResult] = await db.pool.query(
                 `INSERT INTO pharmacist_sessions (session_id, staff_id, share_percentage, created_at) 
                  VALUES (?, ?, 100.00, ${getMySQLTimestamp()})`,
                 [sessionId, pharmacist.staff_id]
@@ -140,6 +138,17 @@ const posLogin = async (req, res) => {
 
             // If everything is successful, commit the transaction
             await db.pool.query('COMMIT');
+
+            // Log session start with detailed information
+            console.log('POS Session Started:', {
+                sessionId: sessionId,
+                pharmacistId: pharmacist.staff_id,
+                pharmacistName: pharmacist.name,
+                branchId: pharmacist.branch_id,
+                branchName: pharmacist.branch_name,
+                branchCode: pharmacist.branch_code,
+                timestamp: new Date().toISOString()
+            });
 
             // Get the current timestamp for the response
             const loginTimestamp = getCurrentTimestamp();
@@ -150,11 +159,21 @@ const posLogin = async (req, res) => {
                     staffId: pharmacist.staff_id,
                     name: pharmacist.name,
                     branchId: pharmacist.branch_id,
-                    sessionId: sessionId
+                    branchCode: pharmacist.branch_code,
+                    salesSessionId: sessionId,
+                    pharmacistSessionId: pharmacistSessionResult.insertId
                 },
                 process.env.JWT_SECRET,
                 { expiresIn: '12h' }
             );
+
+            console.log('Pharmacist session data:', {
+                staffId: pharmacist.staff_id,
+                branchId: pharmacist.branch_id,
+                branchCode: pharmacist.branch_code,
+                sessionId: sessionId,
+                pharmacistSessionId: pharmacistSessionResult.insertId
+            });
 
             console.log('Successful POS login for pharmacist:', pharmacist.name);
             res.json({
@@ -163,9 +182,10 @@ const posLogin = async (req, res) => {
                     name: pharmacist.name,
                     staffId: pharmacist.staff_id,
                     branchId: pharmacist.branch_id,
-                    branch_name: pharmacist.branch_name,
+                    branchCode: pharmacist.branch_code,
                     sessionId: sessionId,
                     salesSessionId: sessionId,
+                    branch_name: pharmacist.branch_name,
                     loginTime: loginTimestamp
                 }
             });
@@ -298,50 +318,75 @@ const resetPassword = async (req, res) => {
 // End pharmacist session
 const endPharmacistSession = async (req, res) => {
     const connection = await db.pool.getConnection();
-    
     try {
-        await connection.beginTransaction();
+        const { salesSessionId, pharmacistSessionId } = req.body;
+        
+        console.log('Ending pharmacist session with data:', {
+            pharmacistSessionId,
+            salesSessionId,
+            staffId: req.user.staffId
+        });
 
-        const { staffId, sessionId } = req.user;
-
-        // Get the sales session ID
-        const [sessionResult] = await connection.query(
-            `SELECT ss.session_id 
-             FROM sales_sessions ss
-             JOIN pharmacist_sessions ps ON ss.session_id = ps.session_id
-             WHERE ps.staff_id = ? AND ps.session_id = ?
-             AND ss.end_time IS NULL`,
-            [staffId, sessionId]
+        // Get session info first
+        const [session] = await connection.query(
+            'SELECT * FROM sales_sessions WHERE session_id = ?',
+            [salesSessionId]
         );
 
-        if (sessionResult.length === 0) {
-            throw new Error('Active session not found');
+        if (session.length === 0) {
+            console.log('No active session found for:', salesSessionId);
+            return res.status(400).json({
+                success: false,
+                message: 'No active session found'
+            });
         }
 
-        // Update sales session end time
+        await connection.beginTransaction();
+
+        // 1. Calculate total sales for the session
+        const [sales] = await connection.query(
+            `SELECT COALESCE(SUM(total_amount), 0) as total 
+             FROM sales 
+             WHERE pharmacist_session_id = ?`,
+            [pharmacistSessionId]
+        );
+
+        const totalSales = sales[0].total || 0;
+
+        // 2. Update sales session end time
         await connection.query(
             `UPDATE sales_sessions 
              SET end_time = ${getMySQLTimestamp()},
-                 total_sales = COALESCE((
-                     SELECT SUM(total_amount) 
-                     FROM sales s
-                     JOIN pharmacist_sessions ps ON s.pharmacist_session_id = ps.pharmacist_session_id
-                     WHERE ps.session_id = ?
-                 ), 0),
+                 total_sales = ?,
                  updated_at = ${getMySQLTimestamp()}
              WHERE session_id = ?`,
-            [sessionResult[0].session_id, sessionResult[0].session_id]
+            [totalSales, salesSessionId]
+        );
+
+        // 3. Update pharmacist session end time
+        await connection.query(
+            `UPDATE pharmacist_sessions 
+             SET end_time = ${getMySQLTimestamp()}
+             WHERE pharmacist_session_id = ?`,
+            [pharmacistSessionId]
         );
 
         await connection.commit();
 
-        res.json({
-            success: true,
+        console.log('Session ended successfully:', {
+            pharmacistSessionId,
+            salesSessionId,
+            totalSales
+        });
+
+        res.json({ 
+            success: true, 
             message: 'Session ended successfully'
         });
+
     } catch (error) {
         await connection.rollback();
-        console.error('Error ending session:', error);
+        console.error('Session end error:', error);
         res.status(500).json({ 
             success: false,
             message: 'Failed to end session',

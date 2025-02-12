@@ -614,18 +614,26 @@ const processBulkImport = async (req, res) => {
 
         for (const product of products) {
             if (product.status === 'matched') {
+
+                // Get the product_id from matchedProduct
+                const product_id = product.matchedProduct.id;
+
                 // Check if branch inventory exists
                 const [existingInventory] = await connection.query(
                     `SELECT inventory_id, stock 
                      FROM branch_inventory 
                      WHERE product_id = ? AND branch_id = ? AND is_active = 1`,
-                    [product.product_id, branch_id]
+
+                    [product_id, branch_id]
+
                 );
 
                 if (existingInventory.length > 0) {
                     console.log('Updating existing inventory:', {
                         inventory_id: existingInventory[0].inventory_id,
-                        product_id: product.product_id,
+
+                        product_id: product_id,
+
                         old_stock: existingInventory[0].stock,
                         new_stock: product.quantity,
                         updated_by: userId
@@ -659,10 +667,12 @@ const processBulkImport = async (req, res) => {
                 } else {
                     // Create new branch inventory record
                     const [result] = await connection.query(
-                    `INSERT INTO branch_inventory 
-                     (branch_id, product_id, stock, expiryDate, is_active, createdAt, updatedAt)
-                     VALUES (?, ?, ?, ?, 1, ${getMySQLTimestamp()}, ${getMySQLTimestamp()})`,
-                        [branch_id, product.product_id, product.quantity, product.expiry]
+
+                        `INSERT INTO branch_inventory 
+                         (branch_id, product_id, stock, expiryDate, is_active, createdAt, updatedAt)
+                         VALUES (?, ?, ?, ?, 1, ${getMySQLTimestamp()}, ${getMySQLTimestamp()})`,
+                        [branch_id, product_id, product.quantity, product.expiry]
+
                     );
 
                     // Add inventory history record
@@ -682,7 +692,20 @@ const processBulkImport = async (req, res) => {
                     );
                 }
             } else if (product.status === 'new') {
-                // Handle new product creation
+
+                // Get category_id or use NO CATEGORY (11) as default
+                let category_id = 11; // Default to NO CATEGORY
+                if (product.category) {
+                    const [categoryResult] = await connection.query(
+                        'SELECT category_id FROM category WHERE name = ? AND is_active = 1',
+                        [product.category]
+                    );
+                    if (categoryResult.length > 0) {
+                        category_id = categoryResult[0].category_id;
+                    }
+                }
+              
+ Handle new product creation
                 const [result] = await connection.query(
                     `INSERT INTO products (
                         barcode, name, brand_name, category, 
@@ -694,24 +717,49 @@ const processBulkImport = async (req, res) => {
                         product.barcode,
                         product.name,
                         product.brand_name,
-                        product.category,
+                        category_id, // Use the determined category_id
                         product.description || null,
                         product.sideEffects || null,
-                        product.dosage_amount,
-                        product.dosage_unit,
+                        product.dosage_amount || null,
+                        product.dosage_unit || null,
                         product.price || 50.00,
                         product.pieces_per_box || 1,
                         product.critical || 10,
                         product.requiresPrescription || false
                     ]
                 );
+
+                // Create branch inventory record for new product
+                const [inventoryResult] = await connection.query(
+                    `INSERT INTO branch_inventory 
+                     (branch_id, product_id, stock, expiryDate, is_active, createdAt, updatedAt)
+                     VALUES (?, ?, ?, ?, 1, ${getMySQLTimestamp()}, ${getMySQLTimestamp()})`,
+                    [branch_id, result.insertId, product.quantity, product.expiry]
+                );
+
+                // Add inventory history record
+                await connection.query(
+                    `INSERT INTO inventory_history 
+                     (inventory_id, transaction_type, quantity, previous_stock, 
+                      current_stock, expiry_date, remarks, created_at, created_by)
+                     VALUES (?, 'BULK_IMPORT', ?, 0, ?, ?, ?, ${getMySQLTimestamp()}, ?)`,
+                    [
+                        inventoryResult.insertId,
+                        product.quantity,
+                        product.quantity,
+                        product.expiry,
+                        'New product from bulk import',
+                        userId
+                    ]
+                );
+
                 console.log('Created new product:', {
                     product_id: result.insertId,
                     barcode: product.barcode,
                     name: product.name,
-                    brand_name: product.brand_name
+                    brand_name: product.brand_name,
+                    category_id: category_id
                 });
-                product_id = result.insertId;
             }
         }
 
@@ -722,7 +770,10 @@ const processBulkImport = async (req, res) => {
     } catch (error) {
         await connection.rollback();
         console.error('Error processing bulk import:', error);
-        res.status(500).json({ message: 'Error processing import' });
+        res.status(500).json({ 
+            message: 'Error processing import',
+            error: error.message 
+        });
     } finally {
         connection.release();
     }
@@ -975,3 +1026,4 @@ module.exports = {
     bulkArchiveSuppliers,
     bulkRestoreSuppliers
 }; 
+
